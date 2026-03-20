@@ -4,3 +4,11 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+body > div:not(#root) {
+  display: none !important;
+}
+
+.k-licensing-watermark {
+  display: none !important;
+}

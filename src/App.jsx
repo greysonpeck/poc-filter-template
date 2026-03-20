@@ -396,7 +396,7 @@ function TemplateControl({ currentSelections = {}, onSelectTemplate, filtersActi
       </div>
 
       {open && mode === 'dropdown' && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-[220px] rounded-[4px] border border-[#d1d5dc] bg-white shadow-lg py-1">
+        <div className="absolute right-0 top-full mt-1 z-[9999] w-[220px] rounded-[4px] border border-[#d1d5dc] bg-white shadow-lg py-1">
           {templates.map(t => (
             <button key={t.name} className="w-full text-left px-3 py-1.5 text-sm text-[#364153] hover:bg-gray-50" onClick={() => handleSelect(t)}>
               {t.name}
@@ -419,7 +419,7 @@ function TemplateControl({ currentSelections = {}, onSelectTemplate, filtersActi
       )}
 
       {open && mode === 'create' && (
-        <div className="absolute right-0 top-full mt-1 z-50 rounded-[4px] border border-[#e5e7eb] bg-white overflow-hidden w-[320px]">
+        <div className="absolute right-0 top-full mt-1 z-[9999] rounded-[4px] border border-[#e5e7eb] bg-white overflow-hidden w-[320px]">
           <FieldsPanel />
           <div className="flex justify-end px-4 py-3">
             <button className="h-8 w-[80px] min-w-[80px] px-2 py-1 rounded-[4px] bg-[#1d2f5d] text-[14px] text-white hover:bg-[#162449] transition-colors" onClick={handleCreate}>
@@ -430,7 +430,7 @@ function TemplateControl({ currentSelections = {}, onSelectTemplate, filtersActi
       )}
 
       {open && mode === 'edit' && (
-        <div className="absolute right-0 top-full mt-1 z-50 rounded-[4px] border border-[#e5e7eb] bg-white overflow-hidden">
+        <div className="absolute right-0 top-full mt-1 z-[9999] rounded-[4px] border border-[#e5e7eb] bg-white overflow-hidden">
           <FieldsPanel />
           <div className="flex items-center gap-3 px-4 py-3">
             {/* Delete template — red, underlined, w-[102px] min-w-[80px] */}
@@ -566,7 +566,7 @@ function FilterChip({ label, values, variant = 'default', value, onChange }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 bg-white border border-[#d1d5dc] rounded shadow-lg z-50 py-1 min-w-[160px]">
+        <div className="absolute left-0 top-full mt-1 bg-white border border-[#d1d5dc] rounded shadow-lg z-[9999] py-1 min-w-[160px]">
           {values.map(val => (
             <label key={val} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm text-[#364153]">
               <input
@@ -663,7 +663,7 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
               <ColumnsCogIcon />
             </button>
             {showChooser && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-[#d1d5dc] rounded shadow-lg z-50 py-1 min-w-[180px]">
+              <div className="absolute right-0 top-full mt-1 bg-white border border-[#d1d5dc] rounded shadow-lg z-[9999] py-1 min-w-[180px]">
                 {ALL_COLUMNS.map(col => (
                   <label key={col.field} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm text-[#364153]">
                     <input
