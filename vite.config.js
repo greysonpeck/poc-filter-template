@@ -4,6 +4,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-    base: '/workflow-test/',
-
+  base: '/poc-filter-template/',
+  build: {
+    rollupOptions: {
+      external: ['@progress/kendo-file-saver'],
+    },
+  },
 })
