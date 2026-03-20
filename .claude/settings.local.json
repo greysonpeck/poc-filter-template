@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create vite@latest . -- --template react 2>&1)",
+      "Bash(npm create vite@latest . --template react --yes 2>&1 || npm create vite@latest . -- --template react --overwrite 2>&1)",
+      "Bash(npm install --save-dev vite @vitejs/plugin-react tailwindcss @tailwindcss/vite 2>&1 | tail -5)",
+      "Bash(npm install react react-dom 2>&1 | tail -5)",
+      "Bash(npm run dev 2>&1)",
+      "mcp__figma__get_metadata",
+      "mcp__figma__get_design_context",
+      "mcp__figma__get_screenshot",
+      "Bash(node --input-type=module --eval \"import\\('./src/App.jsx'\\)\" 2>&1 | head -20)",
+      "Bash(npx --yes acorn --ecma2020 --module src/App.jsx > /dev/null 2>&1; echo \"exit: $?\")",
+      "Bash(npx vite:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
