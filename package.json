@@ -1,16 +1,30 @@
 {
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",
     "@vitejs/plugin-react": "^5.1.4",
+    "gh-pages": "^6.3.0",
     "tailwindcss": "^4.2.1",
     "vite": "^7.3.1"
   },
   "dependencies": {
+    "@progress/kendo-data-query": "^1.7.4",
+    "@progress/kendo-file-saver": "^1.1.2",
+    "@progress/kendo-react-buttons": "^14.2.1",
+    "@progress/kendo-react-dropdowns": "^14.2.1",
+    "@progress/kendo-react-grid": "^14.2.1",
+    "@progress/kendo-react-inputs": "^14.2.1",
+    "@progress/kendo-react-intl": "^14.2.1",
+    "@progress/kendo-react-listbox": "^14.2.1",
+    "@progress/kendo-react-popup": "^14.2.1",
+    "@progress/kendo-theme-default": "^13.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
-  }
+  },
+  "homepage": "https://greysonpeck.github.io/workflow-test/"
 }

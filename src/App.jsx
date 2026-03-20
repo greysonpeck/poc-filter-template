@@ -1,7 +1,846 @@
+import { useState, useRef, useEffect } from 'react'
+import { Grid, GridColumn as Column, GridToolbar, GridNoRecords } from '@progress/kendo-react-grid'
+import { orderBy } from '@progress/kendo-data-query'
+import '@progress/kendo-theme-default/dist/all.css'
+import DocumentationPage from './DocumentationPage'
+
 export default function App() {
+  const [page, setPage] = useState('main') // 'main' | 'docs'
+  const [loadedData, setLoadedData] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [chipSelections, setChipSelections] = useState({ status: new Set(), finance: new Set(), type: new Set() })
+
+  if (page === 'docs') return <DocumentationPage onBack={() => setPage('main')} />
+
+  const anyChipActive = Object.values(chipSelections).some(s => s.size > 0)
+
+  function updateChip(field, newSet) {
+    setChipSelections(prev => ({ ...prev, [field]: newSet }))
+  }
+
+  function applyFilter(sels) {
+    const filtered = ROWS.filter(row =>
+      Object.entries(sels).every(([field, vals]) => vals.size === 0 || vals.has(row[field]))
+    )
+    setIsLoading(true)
+    setTimeout(() => {
+      setLoadedData(filtered)
+      setIsLoading(false)
+    }, 2000)
+  }
+
+  function handleLoad() {
+    applyFilter(chipSelections)
+  }
+
+  function handleSelectTemplate(template) {
+    const sels = {
+      status:  new Set(template.selections?.status  ?? []),
+      finance: new Set(template.selections?.finance ?? []),
+      type:    new Set(template.selections?.type    ?? []),
+    }
+    setChipSelections(sels)
+    applyFilter(sels)
+  }
+
   return (
-    <div className="flex items-center justify-center h-screen">
-      <h1 className="text-3xl font-bold">Hello world</h1>
+    <div className="flex h-screen overflow-hidden" style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
+
+      {/* Sidebar */}
+      <aside className="w-[220px] shrink-0 flex flex-col" style={{ backgroundColor: '#1D2F5D' }}>
+
+        {/* Logo area */}
+        <div className="h-14 flex items-center px-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <FieldEdgeLogo />
+        </div>
+
+        {/* Nav items */}
+        <nav className="flex-1 py-3 flex flex-col gap-0.5 px-2">
+
+          {/* Home */}
+          <NavItem icon={<HomeIcon />} label="Home" />
+
+          {/* Customers (group, expanded) */}
+          <NavItem icon={<UsersIcon />} label="Customers" hasChevron />
+          <div className="pl-8 flex flex-col gap-0.5">
+            <SubNavItem label="All Customers" />
+            <SubNavItem label="Contacts" />
+          </div>
+
+          {/* Work Orders */}
+          <NavItem icon={<ClipboardListIcon />} label="Work Orders" />
+
+          {/* Dispatching */}
+          <NavItem icon={<TruckIcon />} label="Dispatching" />
+
+          {/* Reports (active) */}
+          <NavItem icon={<BarChartIcon />} label="Reports" active />
+
+          {/* Settings */}
+          <NavItem icon={<SettingsIcon />} label="Settings" />
+        </nav>
+
+        {/* Show documentation */}
+        <div className="px-3 pb-2">
+          <button
+            onClick={() => setPage('docs')}
+            className="text-xs text-left w-full px-2 py-1.5 rounded transition-colors"
+            style={{ color: 'rgba(255,255,255,0.45)' }}
+            onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.75)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.45)'}
+          >
+            Show documentation
+          </button>
+        </div>
+
+        {/* Collapse toggle */}
+        <div className="h-10 flex items-center justify-end px-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <button className="p-1 rounded" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M10 3L6 8L10 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+      </aside>
+
+      {/* Right panel */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+        {/* Top header */}
+        <header className="h-14 shrink-0 bg-white border-b border-gray-200 flex items-center px-4 gap-3">
+
+          {/* Page title */}
+          <span className="font-bold text-sm flex-1" style={{ color: '#1D2F5D' }}>
+            Report: Activity History
+          </span>
+
+          {/* Right side icons */}
+          <div className="flex items-center gap-1">
+
+            {/* Search */}
+            <button className="p-1.5 rounded hover:bg-gray-100 text-gray-500">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
+
+            {/* External link */}
+            <button className="p-1.5 rounded hover:bg-gray-100 text-gray-500">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M15 3h6v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M10 14L21 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {/* Clock */}
+            <button className="p-1.5 rounded hover:bg-gray-100 text-gray-500">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {/* Bar chart */}
+            <button className="p-1.5 rounded hover:bg-gray-100 text-gray-500">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {/* Wallet */}
+            <button className="p-1.5 rounded hover:bg-gray-100 text-gray-500">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M20 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="13" r="1.5" fill="currentColor" />
+              </svg>
+            </button>
+
+            {/* Help */}
+            <button className="p-1.5 rounded hover:bg-gray-100 text-gray-500">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="17" r="0.5" fill="currentColor" stroke="currentColor" strokeWidth="1" />
+              </svg>
+            </button>
+
+            {/* Divider */}
+            <div className="w-px h-6 bg-gray-200 mx-1" />
+
+            {/* User avatar */}
+            <button className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-500 hover:bg-gray-200 overflow-hidden">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        {/* Main content */}
+        <main className="flex-1 overflow-auto p-4" style={{ backgroundColor: '#f2f6f9' }}>
+          <div className="bg-white rounded p-3 flex flex-col gap-3">
+            {/* Filter chips */}
+            <div className="flex items-center gap-10">
+              <div className="flex items-center gap-2">
+                <FilterChip label="Status"  field="status"  values={[...new Set(ROWS.map(r => r.status))]}  value={chipSelections.status}  onChange={s => updateChip('status',  s)} />
+                <FilterChip label="Finance" field="finance" values={[...new Set(ROWS.map(r => r.finance))]} value={chipSelections.finance} onChange={s => updateChip('finance', s)} />
+                <FilterChip label="Type"    field="type"    values={[...new Set(ROWS.map(r => r.type))]}    value={chipSelections.type}    onChange={s => updateChip('type',    s)} />
+              </div>
+              <div className="flex items-center gap-2 ml-auto">
+                <TemplateControl currentSelections={chipSelections} onSelectTemplate={handleSelectTemplate} filtersActive={anyChipActive} />
+                <LoadButton onClick={() => handleLoad()} active={anyChipActive} />
+              </div>
+            </div>
+            <ActivityHistoryTable loadedData={loadedData} isLoading={isLoading} />
+          </div>
+        </main>
+      </div>
     </div>
+  )
+}
+
+function NavItem({ icon, label, active, hasChevron }) {
+  if (active) {
+    return (
+      <button className="w-full flex items-center gap-2.5 px-2 py-2 rounded text-sm font-bold text-left bg-white" style={{ color: '#1D2F5D' }}>
+        <span style={{ color: '#33a642' }}>{icon}</span>
+        <span className="flex-1">{label}</span>
+      </button>
+    )
+  }
+  return (
+    <button
+      className="w-full flex items-center gap-2.5 px-2 py-2 rounded text-sm font-semibold text-left transition-colors"
+      style={{ color: 'rgba(255,255,255,0.75)' }}
+    >
+      <span style={{ color: 'rgba(255,255,255,0.6)' }}>{icon}</span>
+      <span className="flex-1">{label}</span>
+      {hasChevron && (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
+function SubNavItem({ label }) {
+  return (
+    <button className="w-full flex items-center px-2 py-1.5 rounded text-xs text-left" style={{ color: 'rgba(255,255,255,0.55)' }}>
+      {label}
+    </button>
+  )
+}
+
+const ROWS = [
+  { customerName: "prashant Demo' quick", customerId: '9100650', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'prashant.sharma@routeware.com', class: 'Default class', status: 'Active',   finance: 'Yes' },
+  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Default class', status: 'Active',   finance: 'No'  },
+  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'A/R Note',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Default class', status: 'Inactive', finance: 'Yes' },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Active',   finance: 'Yes' },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS FILE',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Active',   finance: 'No'  },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Pending',  finance: 'No'  },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'CALL',      date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Active',   finance: 'Yes' },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Active',   finance: 'Yes' },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'UPDATE',    date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Inactive', finance: 'No'  },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Active',   finance: 'Yes' },
+]
+
+const COLUMNS = [
+  { key: 'customerName', label: 'Customer Name', flex: '1 0 0' },
+  { key: 'customerId', label: 'Customer ID', width: 140 },
+  { key: 'type', label: 'Type', width: 140 },
+  { key: 'date', label: 'Date', width: 140 },
+  { key: 'contact', label: 'Contact', width: 260 },
+  { key: 'detail', label: 'Detail', width: 180 },
+  { key: 'class', label: 'Class', width: 140 },
+  { key: 'status', label: 'Status', width: 100 },
+]
+
+const TEMPLATES_KEY = 'fe_templates'
+
+function TemplateControl({ currentSelections = {}, onSelectTemplate, filtersActive = false }) {
+  const [open, setOpen] = useState(false)
+  const [mode, setMode] = useState('dropdown') // 'dropdown' | 'create' | 'edit'
+  const [templates, setTemplates] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY)) || [] } catch { return [] }
+  })
+  const [selectedName, setSelectedName] = useState('')
+  const [editingName, setEditingName] = useState('') // original name of template being edited
+  const [templateName, setTemplateName] = useState('')
+  const [visibleToAll, setVisibleToAll] = useState(false)
+  const ref = useRef(null)
+
+  const selected = selectedName !== ''
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  function handleOpen() {
+    setMode(templates.length > 0 ? 'dropdown' : 'create')
+    setTemplateName('')
+    setVisibleToAll(false)
+    setOpen(v => !v)
+  }
+
+  function openEdit() {
+    const t = templates.find(t => t.name === selectedName) ?? templates[0]
+    if (!t) return
+    setEditingName(t.name)
+    setTemplateName(t.name)
+    setVisibleToAll(t.visibleToAll ?? false)
+    setMode('edit')
+  }
+
+  function persist(next) {
+    setTemplates(next)
+    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(next))
+  }
+
+  function handleCreate() {
+    const name = templateName.trim()
+    if (!name) return
+    const selections = {
+      status:  [...(currentSelections.status  ?? [])],
+      finance: [...(currentSelections.finance ?? [])],
+      type:    [...(currentSelections.type    ?? [])],
+    }
+    persist([...templates, { name, visibleToAll, selections }])
+    setSelectedName(name)
+    setOpen(false)
+  }
+
+  function handleEditSave() {
+    const name = templateName.trim()
+    if (!name) return
+    const next = templates.map(t =>
+      t.name === editingName ? { ...t, name, visibleToAll } : t
+    )
+    persist(next)
+    if (selectedName === editingName) setSelectedName(name)
+    setOpen(false)
+  }
+
+  function handleSaveAsNew() {
+    const name = templateName.trim()
+    if (!name) return
+    const base = templates.find(t => t.name === editingName)
+    persist([...templates, { ...base, name, visibleToAll }])
+    setSelectedName(name)
+    setOpen(false)
+  }
+
+  function handleDelete() {
+    const next = templates.filter(t => t.name !== editingName)
+    persist(next)
+    if (selectedName === editingName) setSelectedName('')
+    setOpen(false)
+  }
+
+  function handleSelect(template) {
+    setSelectedName(template.name)
+    onSelectTemplate?.(template)
+    setOpen(false)
+  }
+
+  const BookmarkIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0" style={{ color: selected ? '#1d2f5d' : '#62748e' }}>
+      <path d="M11.3333 2C11.6869 2 12.026 2.14048 12.2761 2.39052C12.5261 2.64057 12.6666 2.97971 12.6666 3.33333V13.3333C12.6665 13.4501 12.6359 13.5648 12.5776 13.6659C12.5193 13.7671 12.4355 13.8512 12.3345 13.9098C12.2335 13.9683 12.1189 13.9994 12.0022 13.9998C11.8854 14.0002 11.7706 13.9699 11.6693 13.912L8.66125 11.1933C8.45983 11.0783 8.23188 11.0178 7.99992 11.0178C7.76795 11.0178 7.54 11.0783 7.33859 11.1933L4.33059 13.912C4.22921 13.9699 4.11441 14.0002 3.99767 13.9998C3.88092 13.9994 3.76633 13.9683 3.66535 13.9098C3.56437 13.8512 3.48055 13.7671 3.42226 13.6659C3.36398 13.5648 3.33329 13.4501 3.33325 13.3333V3.33333C3.33325 2.97971 3.47373 2.64057 3.72378 2.39052C3.97382 2.14048 4.31296 2 4.66659 2H11.3333Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+
+  // Shared fields panel (input-wrapper + checkbox)
+  const FieldsPanel = () => (
+    <div className="flex flex-col gap-3 p-4">
+      <div className="flex flex-col gap-1 w-full">
+        <div className="h-6 flex items-center">
+          <span className="flex-1 text-[14px] font-bold leading-5 text-[#3f3f46]">Template name</span>
+        </div>
+        <div className="h-10 w-full bg-white border border-[#a1a1aa] rounded-[4px] flex items-center px-3">
+          <input
+            autoFocus
+            type="text"
+            value={templateName}
+            onChange={e => setTemplateName(e.target.value)}
+            className="flex-1 text-[14px] font-normal leading-[1.5] text-[#3f3f46] bg-transparent outline-none"
+          />
+        </div>
+      </div>
+      <div className="flex gap-1 items-center w-full">
+        <span className="flex-1 text-[14px] font-bold leading-5 text-[#364153]">Visible to all users</span>
+        <CheckboxPrimitive checked={visibleToAll} onChange={() => setVisibleToAll(v => !v)} />
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="relative w-fit" ref={ref}>
+      {/* Chip trigger */}
+      <div
+        className="bg-white ring-1 ring-[#cad5e2] flex gap-1 items-center px-2 py-0.5 rounded cursor-pointer"
+        onClick={handleOpen}
+      >
+        <BookmarkIcon />
+        <span className="text-sm font-semibold whitespace-nowrap" style={{ color: selected ? '#1d2f5d' : '#62748e' }}>
+          {selected ? selectedName : 'No template'}
+        </span>
+      </div>
+
+      {open && mode === 'dropdown' && (
+        <div className="absolute right-0 top-full mt-1 z-50 w-[220px] rounded-[4px] border border-[#d1d5dc] bg-white shadow-lg py-1">
+          {templates.map(t => (
+            <button key={t.name} className="w-full text-left px-3 py-1.5 text-sm text-[#364153] hover:bg-gray-50" onClick={() => handleSelect(t)}>
+              {t.name}
+            </button>
+          ))}
+          {filtersActive && (
+            <>
+              <div className="my-1 border-t border-[#e5e7eb]" />
+              {selected && (
+                <button className="w-full text-left px-3 py-1.5 text-sm text-[#364153] hover:bg-gray-50" onClick={openEdit}>
+                  Edit template
+                </button>
+              )}
+              <button className="w-full text-left px-3 py-1.5 text-sm text-[#364153] hover:bg-gray-50" onClick={() => { setTemplateName(''); setVisibleToAll(false); setMode('create') }}>
+                New template
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {open && mode === 'create' && (
+        <div className="absolute right-0 top-full mt-1 z-50 rounded-[4px] border border-[#e5e7eb] bg-white overflow-hidden w-[320px]">
+          <FieldsPanel />
+          <div className="flex justify-end px-4 py-3">
+            <button className="h-8 w-[80px] min-w-[80px] px-2 py-1 rounded-[4px] bg-[#1d2f5d] text-[14px] text-white hover:bg-[#162449] transition-colors" onClick={handleCreate}>
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+
+      {open && mode === 'edit' && (
+        <div className="absolute right-0 top-full mt-1 z-50 rounded-[4px] border border-[#e5e7eb] bg-white overflow-hidden">
+          <FieldsPanel />
+          <div className="flex items-center gap-3 px-4 py-3">
+            {/* Delete template — red, underlined, w-[102px] min-w-[80px] */}
+            <button className="min-w-[80px] w-[102px] py-[6px] rounded-[4px] text-[14px] text-[#e7000b] underline shrink-0 text-center hover:opacity-80 transition-opacity" onClick={handleDelete}>
+              Delete template
+            </button>
+            {/* Right-side actions */}
+            <div className="flex gap-3 items-center justify-end flex-1">
+              <button
+                className="h-8 w-[98px] min-w-[80px] px-2 py-1 rounded-[4px] border border-[#1d2f5d] bg-white text-[14px] text-[#1d2f5d] hover:bg-[#f0f4ff] transition-colors"
+                onClick={handleSaveAsNew}
+              >
+                Save as New
+              </button>
+              <button
+                className="h-8 w-[80px] min-w-[80px] px-2 py-1 rounded-[4px] bg-[#1d2f5d] text-[14px] text-white hover:bg-[#162449] transition-colors"
+                onClick={handleEditSave}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const CHIP_COLORS = {
+  default: {
+    bgInactive: '#f0f9ff', bgInactiveHover: '#dff2fe', textInactive: '#00598a',
+    bgActive:   '#b8e6fe', bgActiveHover:   '#74d4ff', textActive:   '#024a70',
+  },
+  load: {
+    bgInactive: '#f3f4f6', bgInactiveHover: '#e5e7eb', textInactive: '#45556c',
+    bgActive:   '#1d2f5d', bgActiveHover:   '#162449', textActive:   '#ffffff',
+  },
+}
+
+function CheckboxPrimitive({ checked = false, onChange }) {
+  const [hover, setHover] = useState(false)
+  const boxClass = checked
+    ? `bg-[#0084d1] border-2 border-[#0084d1] rounded-[2px] overflow-hidden relative size-[22px] shrink-0${hover ? ' shadow-[0px_0px_0px_4px_#dff2fe]' : ''}`
+    : `bg-${hover ? '[#dff2fe]' : 'white'} border-2 border-[#99a1af] rounded-[2px] overflow-hidden size-[22px] shrink-0${hover ? ' shadow-[0px_0px_0px_4px_#dff2fe]' : ''}`
+  return (
+    <div
+      className="p-[10px] cursor-pointer"
+      onClick={onChange}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <div className={boxClass}>
+        {checked && (
+          <svg className="absolute -left-[2px] -top-[2px] size-[24px]" viewBox="0 0 24 24" fill="none">
+            <path d="M20 6L9 17L4 12" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function LoadButton({ onClick, active }) {
+  const c = CHIP_COLORS.load
+  const [hover, setHover] = useState(false)
+  const bg    = active ? (hover ? c.bgActiveHover   : c.bgActive)   : (hover ? c.bgInactiveHover : c.bgInactive)
+  const color = active ? c.textActive : c.textInactive
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors"
+      style={{ backgroundColor: bg, color, paddingLeft: 12, paddingRight: 12, paddingTop: 2, paddingBottom: 2 }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      Load
+    </button>
+  )
+}
+
+function FilterChip({ label, values, variant = 'default', value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const colors = CHIP_COLORS[variant]
+  const selected = value ?? new Set()
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const isActive = selected.size > 0
+  const chipLabel = selected.size === 1 ? `${label}: ${[...selected][0]}` : selected.size > 1 ? `${label} (${selected.size})` : label
+
+  const toggleValue = val => {
+    const next = new Set(selected)
+    next.has(val) ? next.delete(val) : next.add(val)
+    onChange?.(next)
+  }
+
+  const clear = e => {
+    e.stopPropagation()
+    onChange?.(new Set())
+    setOpen(false)
+  }
+
+  const bgDefault = isActive ? colors.bgActive   : colors.bgInactive
+  const bgHover   = isActive ? colors.bgActiveHover : colors.bgInactiveHover
+  const textColor = isActive ? colors.textActive  : colors.textInactive
+  const bgCurrent = open && !isActive ? bgHover : bgDefault
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-[6px] rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors"
+        style={{ backgroundColor: bgCurrent, color: textColor, paddingLeft: 12, paddingRight: isActive ? 6 : 12, paddingTop: 2, paddingBottom: 2 }}
+        onMouseEnter={e => e.currentTarget.style.backgroundColor = bgHover}
+        onMouseLeave={e => e.currentTarget.style.backgroundColor = bgCurrent}
+      >
+        {chipLabel}
+        {isActive && (
+          <span onClick={clear} className="flex items-center justify-center w-5 h-5 shrink-0">
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 bg-white border border-[#d1d5dc] rounded shadow-lg z-50 py-1 min-w-[160px]">
+          {values.map(val => (
+            <label key={val} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm text-[#364153]">
+              <input
+                type="checkbox"
+                checked={selected.has(val)}
+                onChange={() => toggleValue(val)}
+                className="accent-[#0069a8]"
+              />
+              {val}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const ALL_COLUMNS = [
+  { field: 'customerName', title: 'Customer Name' },
+  { field: 'customerId',   title: 'Customer ID',   width: 140 },
+  { field: 'status',       title: 'Status',        width: 100 },
+  { field: 'finance',      title: 'Finance',       width: 100 },
+  { field: 'type',         title: 'Type',          width: 140 },
+  { field: 'date',         title: 'Date',          width: 140 },
+  { field: 'contact',      title: 'Contact',       width: 260 },
+  { field: 'class',        title: 'Class',         width: 140 },
+]
+
+function ActivityHistoryTable({ loadedData, isLoading }) {
+  const [sort, setSort] = useState([])
+  const [group, setGroup] = useState([])
+  const [search, setSearch] = useState('')
+  const [visibleCols, setVisibleCols] = useState(() => new Set(ALL_COLUMNS.map(c => c.field)))
+  const [showChooser, setShowChooser] = useState(false)
+  const chooserRef = useRef(null)
+
+  // Close chooser on outside click
+  useEffect(() => {
+    if (!showChooser) return
+    function handler(e) {
+      if (chooserRef.current && !chooserRef.current.contains(e.target)) setShowChooser(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showChooser])
+
+  // Global search: keep rows where any field contains the search string
+  const baseRows = loadedData ?? []
+  const searched = search
+    ? baseRows.filter(row => Object.values(row).some(v => String(v).toLowerCase().includes(search.toLowerCase())))
+    : baseRows
+
+  const data = orderBy(searched, sort)
+
+  return (
+    <div className="flex flex-col gap-[11px] items-end w-full">
+
+      {/* Kendo Grid — grouping header is the dashed drop zone; search/chooser overlaid on right */}
+      <div className="w-full activity-grid relative">
+        <Grid
+          data={data}
+          sortable
+          sort={sort}
+          onSortChange={e => setSort(e.sort)}
+          groupable={{ footer: 'none', enabled: true }}
+          group={group}
+          style={{ fontFamily: "'Nunito Sans', sans-serif" }}
+          onGroupChange={e => setGroup(e.group)}
+        >
+          <GridNoRecords>
+            <span className="text-sm text-[#62748e]">Choose at least one filter then click Load.</span>
+          </GridNoRecords>
+          {ALL_COLUMNS.filter(c => visibleCols.has(c.field)).map(col => (
+            <Column key={col.field} field={col.field} title={col.title} width={col.width} />
+          ))}
+        </Grid>
+
+        {/* Search + column chooser — absolutely overlaid on the right of the grouping header */}
+        <div className="absolute top-0 right-0 flex items-center gap-3 p-[10px] z-10" ref={chooserRef}>
+          <div className="bg-white border border-[#858fa2] rounded flex items-center gap-[10px] px-2 py-[6px] w-[250px]">
+            <SearchIcon16 className="text-[#858fa2] shrink-0" />
+            <input
+              className="flex-1 text-sm text-[#364153] outline-none placeholder-[#858fa2] bg-transparent"
+              placeholder="Search..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="relative">
+            <button
+              className="bg-white border border-[#858fa2] rounded flex items-center px-2 py-[6px]"
+              onClick={() => setShowChooser(v => !v)}
+            >
+              <ColumnsCogIcon />
+            </button>
+            {showChooser && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-[#d1d5dc] rounded shadow-lg z-50 py-1 min-w-[180px]">
+                {ALL_COLUMNS.map(col => (
+                  <label key={col.field} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm text-[#364153]">
+                    <input
+                      type="checkbox"
+                      checked={visibleCols.has(col.field)}
+                      onChange={() => setVisibleCols(prev => {
+                        const next = new Set(prev)
+                        next.has(col.field) ? next.delete(col.field) : next.add(col.field)
+                        return next
+                      })}
+                      className="accent-[#1d2f5d]"
+                    />
+                    {col.title}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/75 z-20 pointer-events-none">
+            <span className="flex items-center gap-2 text-sm text-[#62748e]">
+              <svg className="animate-spin shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#cad5e2" strokeWidth="2.5" />
+                <path d="M12 3a9 9 0 019 9" stroke="#1d2f5d" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+              Loading…
+            </span>
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        /* Hide trial watermark */
+        .k-licensing-watermark { display: none !important; }
+
+        /* Remove zebra stripes */
+        .activity-grid .k-grid-table tr:nth-child(even) td,
+        .activity-grid .k-grid-table tr.k-alt td {
+          background-color: #fff !important;
+        }
+
+        /* Grouping header is the dashed drag-and-drop zone */
+        .activity-grid .k-grouping-header {
+          background: #f3f4f6;
+          border-bottom: 1px solid #d1d5dc;
+          padding: 10px;
+          /* Leave room on the right for the overlaid search + chooser (~310px) */
+          padding-right: 320px;
+          min-height: 44px;
+        }
+        .activity-grid .k-grouping-header .k-indicator-container {
+          border: 1px dashed #99a1af;
+          border-radius: 2px;
+          padding: 8px 12px;
+          display: inline-flex;
+          align-items: center;
+          min-height: unset;
+        }
+        .activity-grid .k-grouping-header .k-indicator-container:empty::before {
+          content: "Drag and drop columns here to group the results";
+          font-size: 12px;
+          color: #364153;
+          white-space: nowrap;
+        }
+        .activity-grid .k-grouping-header .k-chip {
+          background: white;
+          border-color: #858fa2;
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function SearchIcon16({ className = '' }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className={className}>
+      <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M10.5 10.5L13.5 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function FunnelIcon({ className = '' }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className={className}>
+      <path d="M2 3h12l-4.5 5.5V13l-3-1.5V8.5L2 3z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function ColumnsCogIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-[#858fa2]">
+      <path d="M3 4h14M3 8h9M3 12h6M3 16h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="15" cy="14" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M15 11.5V12M15 16v.5M17.5 14h-.5M13 14h-.5M16.77 12.23l-.35.35M13.58 15.42l-.35.35M16.77 15.77l-.35-.35M13.58 12.58l-.35-.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function ClockIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M10 6.5V10l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function FieldEdgeLogo() {
+  return (
+    <div className="flex items-center gap-2.5">
+      {/* Mark: green lightning-bolt style icon */}
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="5" fill="#33a642" />
+        {/* Stylized "F" / field service bolt */}
+        <path d="M9 7h10v3H12v3h6v3h-6v5H9V7z" fill="white" />
+      </svg>
+      <span className="font-bold text-base tracking-wide text-white">FieldEdge</span>
+    </div>
+  )
+}
+
+function HomeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function UsersIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function ClipboardListIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="8" y="2" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 12h6M9 16h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function TruckIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  )
+}
+
+function BarChartIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function SettingsIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }
