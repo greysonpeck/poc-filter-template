@@ -4,11 +4,35 @@ import { orderBy } from '@progress/kendo-data-query'
 import '@progress/kendo-theme-default/dist/all.css'
 import DocumentationPage from './DocumentationPage'
 
+function Toast({ message, variant = 'success' }) {
+  const styles = variant === 'neutral'
+    ? 'bg-gray-600 text-white'
+    : 'bg-emerald-600 text-white'
+  return (
+    <div
+      className={`fixed top-5 right-5 z-[99999] flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg text-sm font-semibold pointer-events-none ${styles}`}
+      style={{ animation: 'toast-in 0.2s ease-out' }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0">
+        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {message}
+    </div>
+  )
+}
+
 export default function App() {
   const [page, setPage] = useState('main') // 'main' | 'docs'
   const [loadedData, setLoadedData] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [chipSelections, setChipSelections] = useState({ status: new Set(), finance: new Set(), type: new Set() })
+  const [chipSelections, setChipSelections] = useState({ status: new Set(), finance: new Set(), type: new Set(), class: new Set(), billingCycle: new Set() })
+  const [activeOptionalFields, setActiveOptionalFields] = useState([])
+  const [toast, setToast] = useState(null)
+
+  function showToast(message, variant = 'success') {
+    setToast({ message, variant })
+    setTimeout(() => setToast(null), 3000)
+  }
 
   if (page === 'docs') return <DocumentationPage onBack={() => setPage('main')} />
 
@@ -34,17 +58,26 @@ export default function App() {
   }
 
   function handleSelectTemplate(template) {
+    const optionals = template.selections?._optionalFields ?? []
+    setActiveOptionalFields(optionals)
     const sels = {
-      status:  new Set(template.selections?.status  ?? []),
-      finance: new Set(template.selections?.finance ?? []),
-      type:    new Set(template.selections?.type    ?? []),
+      status:       new Set(template.selections?.status       ?? []),
+      finance:      new Set(template.selections?.finance      ?? []),
+      type:         new Set(template.selections?.type         ?? []),
+      class:        new Set(template.selections?.class        ?? []),
+      billingCycle: new Set(template.selections?.billingCycle ?? []),
     }
     setChipSelections(sels)
     applyFilter(sels)
   }
 
+  function addOptionalField(field) {
+    setActiveOptionalFields(prev => [...prev, field])
+  }
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
+      {toast && <Toast message={toast.message} variant={toast.variant} />}
 
       {/* Sidebar */}
       <aside className="w-[220px] shrink-0 flex flex-col" style={{ backgroundColor: '#1D2F5D' }}>
@@ -189,9 +222,22 @@ export default function App() {
                 <FilterChip label="Status"  field="status"  values={[...new Set(ROWS.map(r => r.status))]}  value={chipSelections.status}  onChange={s => updateChip('status',  s)} />
                 <FilterChip label="Finance" field="finance" values={[...new Set(ROWS.map(r => r.finance))]} value={chipSelections.finance} onChange={s => updateChip('finance', s)} />
                 <FilterChip label="Type"    field="type"    values={[...new Set(ROWS.map(r => r.type))]}    value={chipSelections.type}    onChange={s => updateChip('type',    s)} />
+                {activeOptionalFields.map(field => {
+                  const cfg = OPTIONAL_FIELDS.find(f => f.field === field)
+                  return (
+                    <FilterChip key={field} label={cfg.label} field={field}
+                      values={[...new Set(ROWS.map(r => r[field]))]}
+                      value={chipSelections[field]}
+                      onChange={s => updateChip(field, s)} />
+                  )
+                })}
+                <AddChip
+                  options={OPTIONAL_FIELDS.filter(f => !activeOptionalFields.includes(f.field))}
+                  onAdd={addOptionalField}
+                />
               </div>
               <div className="flex items-center gap-2 ml-auto">
-                <TemplateControl currentSelections={chipSelections} onSelectTemplate={handleSelectTemplate} filtersActive={anyChipActive} />
+                <TemplateControl currentSelections={chipSelections} activeOptionalFields={activeOptionalFields} onSelectTemplate={handleSelectTemplate} filtersActive={anyChipActive} onToast={showToast} />
                 <LoadButton onClick={() => handleLoad()} active={anyChipActive} />
               </div>
             </div>
@@ -237,16 +283,21 @@ function SubNavItem({ label }) {
 }
 
 const ROWS = [
-  { customerName: "prashant Demo' quick", customerId: '9100650', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'prashant.sharma@routeware.com', class: 'Default class', status: 'Active',   finance: 'Yes' },
-  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Default class', status: 'Active',   finance: 'No'  },
-  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'A/R Note',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Default class', status: 'Inactive', finance: 'Yes' },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Active',   finance: 'Yes' },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS FILE',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Active',   finance: 'No'  },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Pending',  finance: 'No'  },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'CALL',      date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Active',   finance: 'Yes' },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Active',   finance: 'Yes' },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'UPDATE',    date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Inactive', finance: 'No'  },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default class', status: 'Active',   finance: 'Yes' },
+  { customerName: "prashant Demo' quick", customerId: '9100650', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'prashant.sharma@routeware.com', class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes' },
+  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Alpha',   billingCycle: '28 day', status: 'Active',   finance: 'No'  },
+  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'A/R Note',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Default', billingCycle: '28 day', status: 'Inactive', finance: 'Yes' },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes' },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS FILE',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Alpha',   billingCycle: '14 day', status: 'Active',   finance: 'No'  },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '28 day', status: 'Pending',  finance: 'No'  },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'CALL',      date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '14 day', status: 'Active',   finance: 'Yes' },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '28 day', status: 'Active',   finance: 'Yes' },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'UPDATE',    date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '14 day', status: 'Inactive', finance: 'No'  },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '28 day', status: 'Active',   finance: 'Yes' },
+]
+
+const OPTIONAL_FIELDS = [
+  { field: 'class',        label: 'Class' },
+  { field: 'billingCycle', label: 'Billing cycle' },
 ]
 
 const COLUMNS = [
@@ -262,7 +313,7 @@ const COLUMNS = [
 
 const TEMPLATES_KEY = 'fe_templates'
 
-function TemplateControl({ currentSelections = {}, onSelectTemplate, filtersActive = false }) {
+function TemplateControl({ currentSelections = {}, activeOptionalFields = [], onSelectTemplate, filtersActive = false, onToast }) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState('dropdown') // 'dropdown' | 'create' | 'edit'
   const [templates, setTemplates] = useState(() => {
@@ -310,13 +361,17 @@ function TemplateControl({ currentSelections = {}, onSelectTemplate, filtersActi
     const name = templateName.trim()
     if (!name) return
     const selections = {
-      status:  [...(currentSelections.status  ?? [])],
-      finance: [...(currentSelections.finance ?? [])],
-      type:    [...(currentSelections.type    ?? [])],
+      status:          [...(currentSelections.status       ?? [])],
+      finance:         [...(currentSelections.finance      ?? [])],
+      type:            [...(currentSelections.type         ?? [])],
+      class:           [...(currentSelections.class        ?? [])],
+      billingCycle:    [...(currentSelections.billingCycle ?? [])],
+      _optionalFields: activeOptionalFields,
     }
     persist([...templates, { name, visibleToAll, selections }])
     setSelectedName(name)
     setOpen(false)
+    onToast?.('Template saved successfully.')
   }
 
   function handleEditSave() {
@@ -328,15 +383,26 @@ function TemplateControl({ currentSelections = {}, onSelectTemplate, filtersActi
     persist(next)
     if (selectedName === editingName) setSelectedName(name)
     setOpen(false)
+    onToast?.('Template saved successfully.')
   }
 
   function handleSaveAsNew() {
     const name = templateName.trim()
     if (!name) return
     const base = templates.find(t => t.name === editingName)
-    persist([...templates, { ...base, name, visibleToAll }])
+    const selections = {
+      ...base?.selections,
+      status:          [...(currentSelections.status       ?? [])],
+      finance:         [...(currentSelections.finance      ?? [])],
+      type:            [...(currentSelections.type         ?? [])],
+      class:           [...(currentSelections.class        ?? [])],
+      billingCycle:    [...(currentSelections.billingCycle ?? [])],
+      _optionalFields: activeOptionalFields,
+    }
+    persist([...templates, { ...base, name, visibleToAll, selections }])
     setSelectedName(name)
     setOpen(false)
+    onToast?.('New template saved successfully.')
   }
 
   function handleDelete() {
@@ -344,6 +410,7 @@ function TemplateControl({ currentSelections = {}, onSelectTemplate, filtersActi
     persist(next)
     if (selectedName === editingName) setSelectedName('')
     setOpen(false)
+    onToast?.('Template deleted.', 'neutral')
   }
 
   function handleSelect(template) {
@@ -375,8 +442,11 @@ function TemplateControl({ currentSelections = {}, onSelectTemplate, filtersActi
           />
         </div>
       </div>
-      <div className="flex gap-1 items-center w-full">
-        <span className="flex-1 text-[14px] font-bold leading-5 text-[#364153]">Visible to all users</span>
+      <div className="flex items-start gap-1 w-full">
+        <div className="flex flex-col flex-1">
+          <span className="text-sm font-bold text-[#364153] pt-[11px]">Visible to all users</span>
+          <p className="text-xs leading-4 text-[#4a5565]">Other users can see and load this template.</p>
+        </div>
         <CheckboxPrimitive checked={visibleToAll} onChange={() => setVisibleToAll(v => !v)} />
       </div>
     </div>
@@ -419,7 +489,7 @@ function TemplateControl({ currentSelections = {}, onSelectTemplate, filtersActi
       )}
 
       {open && mode === 'create' && (
-        <div className="absolute right-0 top-full mt-1 z-[9999] rounded-[4px] border border-[#e5e7eb] bg-white overflow-hidden w-[320px]">
+        <div className="absolute right-0 top-full mt-1 z-[9999] rounded-[4px] border border-[#e5e7eb] bg-white overflow-hidden min-w-[320px]">
           <FieldsPanel />
           <div className="flex justify-end px-4 py-3">
             <button className="h-8 w-[80px] min-w-[80px] px-2 py-1 rounded-[4px] bg-[#1d2f5d] text-[14px] text-white hover:bg-[#162449] transition-colors" onClick={handleCreate}>
@@ -430,23 +500,24 @@ function TemplateControl({ currentSelections = {}, onSelectTemplate, filtersActi
       )}
 
       {open && mode === 'edit' && (
-        <div className="absolute right-0 top-full mt-1 z-[9999] rounded-[4px] border border-[#e5e7eb] bg-white overflow-hidden">
+        <div className="absolute right-0 top-full mt-1 z-[9999] rounded-[4px] border border-[#e5e7eb] bg-white overflow-hidden min-w-[320px]">
           <FieldsPanel />
           <div className="flex items-center gap-3 px-4 py-3">
-            {/* Delete template — red, underlined, w-[102px] min-w-[80px] */}
-            <button className="min-w-[80px] w-[102px] py-[6px] rounded-[4px] text-[14px] text-[#e7000b] underline shrink-0 text-center hover:opacity-80 transition-opacity" onClick={handleDelete}>
-              Delete template
+            {/* Delete — left-aligned, red line reveals on hover */}
+            <button className="group py-[6px] text-[14px] text-[#e7000b] shrink-0 cursor-pointer inline-flex flex-col items-start w-fit" onClick={handleDelete}>
+              <span>Delete</span>
+              <span className="block h-px w-full bg-[#e7000b] opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
             {/* Right-side actions */}
             <div className="flex gap-3 items-center justify-end flex-1">
               <button
-                className="h-8 w-[98px] min-w-[80px] px-2 py-1 rounded-[4px] border border-[#1d2f5d] bg-white text-[14px] text-[#1d2f5d] hover:bg-[#f0f4ff] transition-colors"
+                className="h-8 w-[98px] min-w-[80px] px-2 py-1 rounded-[4px] border border-[#1d2f5d] bg-white text-[14px] text-[#1d2f5d] hover:bg-[#f0f4ff] transition-colors whitespace-nowrap cursor-pointer"
                 onClick={handleSaveAsNew}
               >
                 Save as New
               </button>
               <button
-                className="h-8 w-[80px] min-w-[80px] px-2 py-1 rounded-[4px] bg-[#1d2f5d] text-[14px] text-white hover:bg-[#162449] transition-colors"
+                className="h-8 w-[80px] min-w-[80px] px-2 py-1 rounded-[4px] bg-[#1d2f5d] text-[14px] text-white hover:bg-[#162449] transition-colors cursor-pointer"
                 onClick={handleEditSave}
               >
                 Save
@@ -508,6 +579,49 @@ function LoadButton({ onClick, active }) {
     >
       Load
     </button>
+  )
+}
+
+function AddChip({ options = [], onAdd }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  if (options.length === 0) return null
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center justify-center rounded-full px-3 py-1 cursor-pointer transition-colors bg-sky-50 hover:bg-sky-200 text-sky-800"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M3.33325 7.99999H12.6666M7.99992 3.33333V12.6667" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-[9999] bg-white border border-[#d1d5dc] rounded shadow-lg py-1 min-w-[140px]">
+          {options.map(opt => (
+            <button
+              key={opt.field}
+              className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 cursor-pointer"
+              style={{ color: '#364153' }}
+              onClick={() => { onAdd(opt.field); setOpen(false) }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -585,7 +699,7 @@ function FilterChip({ label, values, variant = 'default', value, onChange }) {
 }
 
 const ALL_COLUMNS = [
-  { field: 'customerName', title: 'Customer Name' },
+  { field: 'customerName', title: 'Customer Name', width: 200 },
   { field: 'customerId',   title: 'Customer ID',   width: 140 },
   { field: 'status',       title: 'Status',        width: 100 },
   { field: 'finance',      title: 'Finance',       width: 100 },
@@ -593,6 +707,7 @@ const ALL_COLUMNS = [
   { field: 'date',         title: 'Date',          width: 140 },
   { field: 'contact',      title: 'Contact',       width: 260 },
   { field: 'class',        title: 'Class',         width: 140 },
+  { field: 'billingCycle', title: 'Billing cycle', width: 140 },
 ]
 
 function ActivityHistoryTable({ loadedData, isLoading }) {
@@ -710,7 +825,7 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
         .activity-grid .k-grouping-header {
           background: #f3f4f6;
           border-bottom: 1px solid #d1d5dc;
-          padding: 10px;
+          padding: 14px;
           /* Leave room on the right for the overlaid search + chooser (~310px) */
           padding-right: 320px;
           min-height: 44px;

@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 // Filter Documentation Page
 
 const NAVY = '#1d2f5d'
@@ -54,11 +56,22 @@ function TemplateChip({ name, selected }) {
   )
 }
 
-function FilterBar({ chips = [], templateName = 'No template', templateSelected = false, loadActive = false }) {
+function AddBtn() {
+  return (
+    <div className="flex items-center justify-center rounded-full px-3 py-1 bg-sky-50 text-sky-800">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3.33325 7.99999H12.6666M7.99992 3.33333V12.6667" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  )
+}
+
+function FilterBar({ chips = [], showAdd = true, templateName = 'No template', templateSelected = false, loadActive = false }) {
   return (
     <div className="flex items-center gap-10">
       <div className="flex items-center gap-2">
         {chips.map((c, i) => <Chip key={i} label={c.label} active={c.active} hasX={c.active} />)}
+        {showAdd && <AddBtn />}
       </div>
       <div className="flex items-center gap-2 ml-auto">
         <TemplateChip name={templateName} selected={templateSelected} />
@@ -112,8 +125,11 @@ function TemplateForm({ prefilled = '', visibleToAll = false, isEdit = false }) 
             <span className="text-[14px]" style={{ color: prefilled ? '#3f3f46' : GRAY_400 }}>{prefilled || '\u00A0'}</span>
           </div>
         </div>
-        <div className="flex gap-1 items-center">
-          <span className="flex-1 text-[14px] font-bold" style={{ color: GRAY_700 }}>Visible to all users</span>
+        <div className="flex items-start gap-1">
+          <div className="flex flex-col flex-1">
+            <span className="text-sm font-bold pt-[11px]" style={{ color: GRAY_700 }}>Visible to all users</span>
+            <p className="text-xs leading-4" style={{ color: '#4a5565' }}>Other users can see and load this template.</p>
+          </div>
           <div className="p-[10px]">
             <div className="size-[22px] rounded-[2px] border-2 flex items-center justify-center" style={{ borderColor: visibleToAll ? '#0084d1' : GRAY_400, backgroundColor: visibleToAll ? '#0084d1' : '#fff' }}>
               {visibleToAll && (
@@ -142,7 +158,7 @@ function TemplateForm({ prefilled = '', visibleToAll = false, isEdit = false }) 
   )
 }
 
-const TABLE_COLS = ['Customer Name', 'Customer ID', 'Type', 'Date', 'Contact', 'Class']
+const TABLE_COLS = ['Customer Name', 'Customer ID', 'Type', 'Date', 'Contact', 'Class', 'Billing cycle']
 
 function EmptyTableState({ message = 'Choose at least one filter then click Load.' }) {
   return (
@@ -161,25 +177,26 @@ function EmptyTableState({ message = 'Choose at least one filter then click Load
 
 function LoadedTableState() {
   const rows = [
-    { name: "prashant Demo' quick", id: '9100650', type: 'SYS EMAIL', date: 'Mar 13, 2026', contact: 'prashant.sharma@routeware.com', cls: 'Default class' },
-    { name: 'Jeffs QA Shop',        id: '9100624', type: 'SYS EMAIL', date: 'Mar 13, 2026', contact: 'jgardner@routeware.com',          cls: 'Default class' },
-    { name: 'John Muir College',    id: '300212',  type: 'CALL',      date: 'Mar 13, 2026', contact: 'arpitstpss@gmail.com',            cls: 'Default class' },
+    { name: "prashant Demo' quick", id: '9100650', type: 'SYS EMAIL', date: 'Mar 13, 2026', contact: 'prashant.sharma@routeware.com', cls: 'Default', billing: '14 day' },
+    { name: 'Jeffs QA Shop',        id: '9100624', type: 'SYS EMAIL', date: 'Mar 13, 2026', contact: 'jgardner@routeware.com',          cls: 'Alpha',   billing: '28 day' },
+    { name: 'John Muir College',    id: '300212',  type: 'CALL',      date: 'Mar 13, 2026', contact: 'arpitstpss@gmail.com',            cls: 'Beta',    billing: '14 day' },
   ]
   return (
     <div className="border rounded bg-white overflow-hidden" style={{ borderColor: GRAY_200 }}>
-      <div className="border-b grid grid-cols-6 px-3 py-2 gap-2" style={{ borderColor: GRAY_200, backgroundColor: '#fafafa' }}>
+      <div className="border-b grid grid-cols-7 px-3 py-2 gap-2" style={{ borderColor: GRAY_200, backgroundColor: '#fafafa' }}>
         {TABLE_COLS.map(h => (
           <span key={h} className="text-xs font-semibold truncate" style={{ color: GRAY_700 }}>{h}</span>
         ))}
       </div>
       {rows.map((r, i) => (
-        <div key={i} className="grid grid-cols-6 px-3 py-1.5 gap-2 border-b last:border-b-0" style={{ borderColor: GRAY_200 }}>
+        <div key={i} className="grid grid-cols-7 px-3 py-1.5 gap-2 border-b last:border-b-0" style={{ borderColor: GRAY_200 }}>
           <span className="text-xs truncate" style={{ color: GRAY_700 }}>{r.name}</span>
           <span className="text-xs" style={{ color: GRAY_700 }}>{r.id}</span>
           <span className="text-xs" style={{ color: GRAY_700 }}>{r.type}</span>
           <span className="text-xs" style={{ color: GRAY_700 }}>{r.date}</span>
           <span className="text-xs truncate" style={{ color: GRAY_700 }}>{r.contact}</span>
           <span className="text-xs" style={{ color: GRAY_700 }}>{r.cls}</span>
+          <span className="text-xs" style={{ color: GRAY_700 }}>{r.billing}</span>
         </div>
       ))}
     </div>
@@ -189,14 +206,14 @@ function LoadedTableState() {
 function LoadingTableState() {
   return (
     <div className="relative border rounded bg-white overflow-hidden" style={{ borderColor: GRAY_200 }}>
-      <div className="border-b grid grid-cols-6 px-3 py-2 gap-2" style={{ borderColor: GRAY_200, backgroundColor: '#fafafa' }}>
+      <div className="border-b grid grid-cols-7 px-3 py-2 gap-2" style={{ borderColor: GRAY_200, backgroundColor: '#fafafa' }}>
         {TABLE_COLS.map(h => (
           <span key={h} className="text-xs font-semibold truncate" style={{ color: GRAY_700 }}>{h}</span>
         ))}
       </div>
       {[0, 1, 2].map(i => (
-        <div key={i} className="grid grid-cols-6 px-3 py-1.5 gap-2 border-b last:border-b-0" style={{ borderColor: GRAY_200 }}>
-          {[0, 1, 2, 3, 4, 5].map(j => (
+        <div key={i} className="grid grid-cols-7 px-3 py-1.5 gap-2 border-b last:border-b-0" style={{ borderColor: GRAY_200 }}>
+          {[0, 1, 2, 3, 4, 5, 6].map(j => (
             <div key={j} className="h-3 rounded" style={{ backgroundColor: GRAY_200, opacity: 0.6 }} />
           ))}
         </div>
@@ -245,11 +262,24 @@ function StateCard({ title, description, children, side = false }) {
   )
 }
 
-function Section({ title, children }) {
+function Section({ title, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
-    <section className="flex flex-col gap-6">
-      <h2 className="font-bold text-lg border-b pb-2" style={{ color: NAVY, borderColor: GRAY_200 }}>{title}</h2>
-      {children}
+    <section>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between pb-2 border-b"
+        style={{ borderColor: GRAY_200 }}
+      >
+        <h2 className="font-bold text-lg" style={{ color: NAVY }}>{title}</h2>
+        <svg
+          width="16" height="16" viewBox="0 0 24 24" fill="none"
+          style={{ color: NAVY, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+        >
+          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && <div className="flex flex-col gap-6 mt-6">{children}</div>}
     </section>
   )
 }
@@ -284,7 +314,7 @@ export default function DocumentationPage({ onBack }) {
       <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col gap-10">
 
         {/* ── Filter bar states ───────────────────────────────────────── */}
-        <Section title="Filter bar states">
+        <Section title="Filter bar states" defaultOpen>
 
           <StateCard
             title="1. Default — no filters set"
@@ -328,16 +358,32 @@ export default function DocumentationPage({ onBack }) {
           </StateCard>
 
           <StateCard
-            title="4. Template selected"
-            description="The user has selected a saved template. The template chip shows the template name in navy. The filter chips are automatically populated with the template's saved selections and the table loads immediately."
+            title="4. Optional filter added"
+            description="The user clicks the '+' button to expand the optional filter list, then selects 'Class' or 'Billing cycle'. The new chip appears between the core chips and the '+' button. The '+' disappears once all optional filters are added."
+          >
+            <FilterBar
+              chips={[
+                { label: 'Status' },
+                { label: 'Finance' },
+                { label: 'Type' },
+                { label: 'Class', active: false },
+              ]}
+              loadActive={false}
+            />
+          </StateCard>
+
+          <StateCard
+            title="5. Template selected (with optional chip)"
+            description="When a template is loaded that was saved with optional chips active, those chips are automatically re-added and their selections restored. Optional chips do not persist across refreshes unless a template restores them."
           >
             <FilterBar
               chips={[
                 { label: 'Status: Active', active: true },
                 { label: 'Finance: Yes', active: true },
                 { label: 'Type' },
+                { label: 'Billing cycle: 14 day', active: true },
               ]}
-              templateName="Active Over 5000"
+              templateName="My Cool Template"
               templateSelected
               loadActive
             />
@@ -349,28 +395,14 @@ export default function DocumentationPage({ onBack }) {
         <Section title="Table states">
 
           <StateCard
-            title="5. Empty state (no load yet)"
+            title="6. Empty state (no load yet)"
             description="Shown on page load and any time no data has been requested. Column headers are always visible. The body prompts the user to set filters and click Load."
           >
             <EmptyTableState />
           </StateCard>
 
           <StateCard
-            title="6. Loading"
-            description="Shown for 2 seconds after the user clicks Load or selects a template. Previous data (if any) remains visible underneath a translucent overlay with a spinner."
-          >
-            <LoadingTableState />
-          </StateCard>
-
-          <StateCard
-            title="7. Results loaded"
-            description="The table shows the rows that match the active filter chips. The user can sort columns, drag columns to group, search, and toggle column visibility."
-          >
-            <LoadedTableState />
-          </StateCard>
-
-          <StateCard
-            title="8. Loaded — no results"
+            title="7. Loaded — no results"
             description="All filter chips matched zero rows. The table shows the empty-state message after the loading spinner completes."
           >
             <EmptyTableState message="No results match the selected filters." />
@@ -380,6 +412,25 @@ export default function DocumentationPage({ onBack }) {
 
         {/* ── Dropdown & popover states ─────────────────────────────────── */}
         <Section title="Dropdown & popover states">
+
+          <StateCard
+            side
+            title="8. Add chip dropdown open"
+            description="Clicking the '+' button reveals a small menu listing optional filters not yet active. Once an option is selected it becomes a chip and is removed from this list. The '+' button disappears when all optional filters are active."
+          >
+            <div className="flex items-center gap-2">
+              <Chip label="Status" />
+              <Chip label="Finance" />
+              <Chip label="Type" />
+              <div className="relative">
+                <AddBtn />
+                <div className="absolute left-0 top-full mt-1 rounded border py-1 bg-white" style={{ borderColor: '#d1d5dc', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', minWidth: 140 }}>
+                  <div className="px-3 py-1.5 text-sm" style={{ color: '#364153' }}>Class</div>
+                  <div className="px-3 py-1.5 text-sm" style={{ color: '#364153' }}>Billing cycle</div>
+                </div>
+              </div>
+            </div>
+          </StateCard>
 
           <StateCard
             side
@@ -406,7 +457,7 @@ export default function DocumentationPage({ onBack }) {
             <div className="flex justify-end">
               <div className="relative inline-flex flex-col items-end gap-1">
                 <TemplateChip name="No template" />
-                <DropdownMenu items={['Active Over 5000', 'Finance Only']} />
+                <DropdownMenu items={['My Cool Template', 'Finance Only']} />
               </div>
             </div>
           </StateCard>
@@ -419,7 +470,7 @@ export default function DocumentationPage({ onBack }) {
             <div className="flex justify-end">
               <div className="relative inline-flex flex-col items-end gap-1">
                 <TemplateChip name="No template" />
-                <DropdownMenu items={['Active Over 5000', 'Finance Only', '---', 'New template']} />
+                <DropdownMenu items={['My Cool Template', 'Finance Only', '---', 'New template']} />
               </div>
             </div>
           </StateCard>
@@ -431,8 +482,8 @@ export default function DocumentationPage({ onBack }) {
           >
             <div className="flex justify-end">
               <div className="relative inline-flex flex-col items-end gap-1">
-                <TemplateChip name="Active Over 5000" selected />
-                <DropdownMenu items={['Active Over 5000', 'Finance Only', '---', 'Edit template', 'New template']} />
+                <TemplateChip name="My Cool Template" selected />
+                <DropdownMenu items={['My Cool Template', 'Finance Only', '---', 'Edit template', 'New template']} />
               </div>
             </div>
           </StateCard>
@@ -457,8 +508,8 @@ export default function DocumentationPage({ onBack }) {
           >
             <div className="flex justify-end">
               <div className="relative inline-flex flex-col items-end gap-1">
-                <TemplateChip name="Active Over 5000" selected />
-                <TemplateForm prefilled="Active Over 5000" visibleToAll isEdit />
+                <TemplateChip name="My Cool Template" selected />
+                <TemplateForm prefilled="My Cool Template" visibleToAll isEdit />
               </div>
             </div>
           </StateCard>
@@ -477,6 +528,8 @@ export default function DocumentationPage({ onBack }) {
                 'Filters changed after template selection — if the user selects a template (which loads data) and then modifies a chip, the active template name is still shown even though the current filter state no longer matches the template.',
                 '"Save as New" naming conflict — if the user types an existing template name in the edit form and clicks "Save as New", a duplicate entry will be created. There is no deduplication or warning.',
                 'Load button state after clearing chips — after chips are cleared, the Load button returns to inactive, but the table still shows the previously loaded data. It is unclear whether the table should also clear.',
+                'Optional chips after template load — if the user loads a template that includes optional chips (e.g. Billing cycle), those chips appear. But if the user then clears the template selection, the optional chips remain visible with no clear way to remove them.',
+                'Optional chip removal — there is no way to remove an optional chip once added, short of refreshing the page. Behavior after loading a template that does not include a previously added optional chip is undefined.',
               ].map((item, i) => (
                 <li key={i} className="flex gap-2">
                   <span className="mt-0.5 shrink-0">•</span>
