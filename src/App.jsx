@@ -27,6 +27,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [chipSelections, setChipSelections] = useState({ status: new Set(), finance: new Set(), type: new Set(), class: new Set(), billingCycle: new Set() })
   const [activeOptionalFields, setActiveOptionalFields] = useState([])
+  const [loadReady, setLoadReady] = useState(false)
   const [toast, setToast] = useState(null)
 
   function showToast(message, variant = 'success') {
@@ -39,7 +40,11 @@ export default function App() {
   const anyChipActive = Object.values(chipSelections).some(s => s.size > 0)
 
   function updateChip(field, newSet) {
-    setChipSelections(prev => ({ ...prev, [field]: newSet }))
+    setChipSelections(prev => {
+      const next = { ...prev, [field]: newSet }
+      setLoadReady(Object.values(next).some(s => s.size > 0))
+      return next
+    })
   }
 
   function applyFilter(sels) {
@@ -47,6 +52,7 @@ export default function App() {
       Object.entries(sels).every(([field, vals]) => vals.size === 0 || vals.has(row[field]))
     )
     setIsLoading(true)
+    setLoadReady(false)
     setTimeout(() => {
       setLoadedData(filtered)
       setIsLoading(false)
@@ -54,6 +60,10 @@ export default function App() {
   }
 
   function handleLoad() {
+    if (!anyChipActive) {
+      showToast('Select at least one filter before loading.', 'neutral')
+      return
+    }
     applyFilter(chipSelections)
   }
 
@@ -68,11 +78,13 @@ export default function App() {
       billingCycle: new Set(template.selections?.billingCycle ?? []),
     }
     setChipSelections(sels)
+    setLoadReady(true)
     applyFilter(sels)
   }
 
   function addOptionalField(field) {
     setActiveOptionalFields(prev => [...prev, field])
+    setLoadReady(true)
   }
 
   return (
@@ -117,12 +129,12 @@ export default function App() {
         <div className="px-3 pb-2">
           <button
             onClick={() => setPage('docs')}
-            className="text-xs text-left w-full px-2 py-1.5 rounded transition-colors"
+            className="text-base text-left w-full px-2 py-1.5 rounded transition-colors"
             style={{ color: 'rgba(255,255,255,0.45)' }}
-            onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.75)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.45)'}
+            onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,100)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.75)'}
           >
-            Show documentation
+            Documentation
           </button>
         </div>
 
@@ -217,7 +229,7 @@ export default function App() {
         <main className="flex-1 overflow-auto p-4" style={{ backgroundColor: '#f2f6f9' }}>
           <div className="bg-white rounded p-3 flex flex-col gap-3">
             {/* Filter chips */}
-            <div className="flex items-center gap-10">
+            <div className="flex items-center gap-2">
               <div className="flex items-center gap-2">
                 <FilterChip label="Status"  field="status"  values={[...new Set(ROWS.map(r => r.status))]}  value={chipSelections.status}  onChange={s => updateChip('status',  s)} />
                 <FilterChip label="Finance" field="finance" values={[...new Set(ROWS.map(r => r.finance))]} value={chipSelections.finance} onChange={s => updateChip('finance', s)} />
@@ -236,9 +248,10 @@ export default function App() {
                   onAdd={addOptionalField}
                 />
               </div>
-              <div className="flex items-center gap-2 ml-auto">
+              <div className="w-px self-stretch bg-gray-200 mx-2" />
+              <div className="flex items-center gap-2">
                 <TemplateControl currentSelections={chipSelections} activeOptionalFields={activeOptionalFields} onSelectTemplate={handleSelectTemplate} filtersActive={anyChipActive} onToast={showToast} />
-                <LoadButton onClick={() => handleLoad()} active={anyChipActive} />
+                <LoadButton onClick={() => handleLoad()} active={loadReady} />
               </div>
             </div>
             <ActivityHistoryTable loadedData={loadedData} isLoading={isLoading} />
@@ -377,8 +390,16 @@ function TemplateControl({ currentSelections = {}, activeOptionalFields = [], on
   function handleEditSave() {
     const name = templateName.trim()
     if (!name) return
+    const selections = {
+      status:          [...(currentSelections.status       ?? [])],
+      finance:         [...(currentSelections.finance      ?? [])],
+      type:            [...(currentSelections.type         ?? [])],
+      class:           [...(currentSelections.class        ?? [])],
+      billingCycle:    [...(currentSelections.billingCycle ?? [])],
+      _optionalFields: activeOptionalFields,
+    }
     const next = templates.map(t =>
-      t.name === editingName ? { ...t, name, visibleToAll } : t
+      t.name === editingName ? { ...t, name, visibleToAll, selections } : t
     )
     persist(next)
     if (selectedName === editingName) setSelectedName(name)
@@ -468,7 +489,10 @@ function TemplateControl({ currentSelections = {}, activeOptionalFields = [], on
       {open && mode === 'dropdown' && (
         <div className="absolute right-0 top-full mt-1 z-[9999] w-[220px] rounded-[4px] border border-[#d1d5dc] bg-white shadow-lg py-1">
           {templates.map(t => (
-            <button key={t.name} className="w-full text-left px-3 py-1.5 text-sm text-[#364153] hover:bg-gray-50" onClick={() => handleSelect(t)}>
+            <button key={t.name} className="w-full text-left px-3 py-1.5 text-sm text-[#364153] hover:bg-gray-50 flex items-center gap-2" onClick={() => handleSelect(t)}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0 text-gray-400">
+                <path d="M11.3333 2C11.6869 2 12.026 2.14048 12.2761 2.39052C12.5261 2.64057 12.6666 2.97971 12.6666 3.33333V13.3333C12.6665 13.4501 12.6359 13.5648 12.5776 13.6659C12.5193 13.7671 12.4355 13.8512 12.3345 13.9098C12.2335 13.9683 12.1189 13.9994 12.0022 13.9998C11.8854 14.0002 11.7706 13.9699 11.6693 13.912L8.66125 11.1933C8.45983 11.0783 8.23188 11.0178 7.99992 11.0178C7.76795 11.0178 7.54 11.0783 7.33859 11.1933L4.33059 13.912C4.22921 13.9699 4.11441 14.0002 3.99767 13.9998C3.88092 13.9994 3.76633 13.9683 3.66535 13.9098C3.56437 13.8512 3.48055 13.7671 3.42226 13.6659C3.36398 13.5648 3.33329 13.4501 3.33325 13.3333V3.33333C3.33325 2.97971 3.47373 2.64057 3.72378 2.39052C3.97382 2.14048 4.31296 2 4.66659 2H11.3333Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
               {t.name}
             </button>
           ))}
@@ -481,7 +505,7 @@ function TemplateControl({ currentSelections = {}, activeOptionalFields = [], on
                 </button>
               )}
               <button className="w-full text-left px-3 py-1.5 text-sm text-[#364153] hover:bg-gray-50" onClick={() => { setTemplateName(''); setVisibleToAll(false); setMode('create') }}>
-                New template
+                Save as new template
               </button>
             </>
           )}
@@ -510,12 +534,6 @@ function TemplateControl({ currentSelections = {}, activeOptionalFields = [], on
             </button>
             {/* Right-side actions */}
             <div className="flex gap-3 items-center justify-end flex-1">
-              <button
-                className="h-8 w-[98px] min-w-[80px] px-2 py-1 rounded-[4px] border border-[#1d2f5d] bg-white text-[14px] text-[#1d2f5d] hover:bg-[#f0f4ff] transition-colors whitespace-nowrap cursor-pointer"
-                onClick={handleSaveAsNew}
-              >
-                Save as New
-              </button>
               <button
                 className="h-8 w-[80px] min-w-[80px] px-2 py-1 rounded-[4px] bg-[#1d2f5d] text-[14px] text-white hover:bg-[#162449] transition-colors cursor-pointer"
                 onClick={handleEditSave}

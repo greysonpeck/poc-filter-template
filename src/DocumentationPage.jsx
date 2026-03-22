@@ -68,12 +68,13 @@ function AddBtn() {
 
 function FilterBar({ chips = [], showAdd = true, templateName = 'No template', templateSelected = false, loadActive = false }) {
   return (
-    <div className="flex items-center gap-10">
+    <div className="flex items-center gap-2">
       <div className="flex items-center gap-2">
         {chips.map((c, i) => <Chip key={i} label={c.label} active={c.active} hasX={c.active} />)}
         {showAdd && <AddBtn />}
       </div>
-      <div className="flex items-center gap-2 ml-auto">
+      <div className="w-px self-stretch bg-gray-200 mx-2" />
+      <div className="flex items-center gap-2">
         <TemplateChip name={templateName} selected={templateSelected} />
         <LoadBtn active={loadActive} />
       </div>
@@ -81,13 +82,21 @@ function FilterBar({ chips = [], showAdd = true, templateName = 'No template', t
   )
 }
 
+const MENU_ACTIONS = ['Edit template', 'Save as new template']
 function DropdownMenu({ items }) {
   return (
     <div className="rounded-[4px] border py-1 bg-white w-[180px]" style={{ borderColor: GRAY_200, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
       {items.map((item, i) =>
         item === '---'
           ? <div key={i} className="my-1 border-t" style={{ borderColor: GRAY_200 }} />
-          : <div key={i} className="px-3 py-1.5 text-sm" style={{ color: GRAY_700 }}>{item}</div>
+          : MENU_ACTIONS.includes(item)
+            ? <div key={i} className="px-3 py-1.5 text-sm" style={{ color: GRAY_700 }}>{item}</div>
+            : <div key={i} className="px-3 py-1.5 text-sm flex items-center gap-2" style={{ color: GRAY_700 }}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0" style={{ color: GRAY_400 }}>
+                  <path d="M11.3333 2C11.6869 2 12.026 2.14048 12.2761 2.39052C12.5261 2.64057 12.6666 2.97971 12.6666 3.33333V13.3333C12.6665 13.4501 12.6359 13.5648 12.5776 13.6659C12.5193 13.7671 12.4355 13.8512 12.3345 13.9098C12.2335 13.9683 12.1189 13.9994 12.0022 13.9998C11.8854 14.0002 11.7706 13.9699 11.6693 13.912L8.66125 11.1933C8.45983 11.0783 8.23188 11.0178 7.99992 11.0178C7.76795 11.0178 7.54 11.0783 7.33859 11.1933L4.33059 13.912C4.22921 13.9699 4.11441 14.0002 3.99767 13.9998C3.88092 13.9994 3.76633 13.9683 3.66535 13.9098C3.56437 13.8512 3.48055 13.7671 3.42226 13.6659C3.36398 13.5648 3.33329 13.4501 3.33325 13.3333V3.33333C3.33325 2.97971 3.47373 2.64057 3.72378 2.39052C3.97382 2.14048 4.31296 2 4.66659 2H11.3333Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {item}
+              </div>
       )}
     </div>
   )
@@ -143,9 +152,8 @@ function TemplateForm({ prefilled = '', visibleToAll = false, isEdit = false }) 
       </div>
       {isEdit ? (
         <div className="flex items-center gap-3 px-4 py-3">
-          <span className="text-[14px] underline" style={{ color: '#e7000b' }}>Delete template</span>
+          <span className="text-[14px]" style={{ color: '#e7000b' }}>Delete</span>
           <div className="flex gap-2 items-center justify-end flex-1">
-            <div className="h-8 px-2 rounded-[4px] border flex items-center text-[14px]" style={{ borderColor: NAVY, color: NAVY }}>Save as New</div>
             <div className="h-8 w-16 rounded-[4px] flex items-center justify-center text-[14px] text-white" style={{ backgroundColor: NAVY }}>Save</div>
           </div>
         </div>
@@ -318,7 +326,7 @@ export default function DocumentationPage({ onBack }) {
 
           <StateCard
             title="1. Default — no filters set"
-            description="The page's initial state on load. All filter chips are inactive, the Load button is inactive, and no data is shown in the table."
+            description="The page's initial state on load. All filter chips are inactive, the Load button is inactive, and no data is shown in the table. Clicking Load while no filters are set shows a toast: 'Select at least one filter before loading.'"
           >
             <FilterBar
               chips={[
@@ -331,7 +339,7 @@ export default function DocumentationPage({ onBack }) {
 
           <StateCard
             title="2. Filters active, not yet loaded"
-            description="The user has selected values in one or more chips. The Load button becomes active (navy). The table still shows the empty state or previous results until Load is clicked."
+            description="The user has selected values in one or more chips. The Load button becomes active (navy). The table still shows the empty state or previous results until Load is clicked. After clicking Load, the button returns to inactive — but clicking it again while gray silently reloads the same query."
           >
             <FilterBar
               chips={[
@@ -452,7 +460,7 @@ export default function DocumentationPage({ onBack }) {
           <StateCard
             side
             title="10. Template menu — no filters active"
-            description="When no filter chips are active, clicking the template chip shows only the list of saved templates. 'Edit template' and 'New template' are hidden because no filter state is defined to save."
+            description="When no filter chips are active, clicking the template chip shows only the list of saved templates. 'Edit template' and 'Save as new template' are hidden because no filter state is defined to save."
           >
             <div className="flex justify-end">
               <div className="relative inline-flex flex-col items-end gap-1">
@@ -465,12 +473,12 @@ export default function DocumentationPage({ onBack }) {
           <StateCard
             side
             title="11. Template menu — filters active, no template selected"
-            description="When filters are active but no template is selected, the menu shows the template list plus a divider and 'New template'. 'Edit template' is omitted because there is no active template to edit."
+            description="When filters are active but no template is selected, the menu shows the template list plus a divider and 'Save as new template'. 'Edit template' is omitted because there is no active template to edit."
           >
             <div className="flex justify-end">
               <div className="relative inline-flex flex-col items-end gap-1">
                 <TemplateChip name="No template" />
-                <DropdownMenu items={['My Cool Template', 'Finance Only', '---', 'New template']} />
+                <DropdownMenu items={['My Cool Template', 'Finance Only', '---', 'Save as new template']} />
               </div>
             </div>
           </StateCard>
@@ -478,12 +486,12 @@ export default function DocumentationPage({ onBack }) {
           <StateCard
             side
             title="12. Template menu — filters active, template selected"
-            description="When both a template is selected and filters are active, the menu shows all options: the template list, a divider, 'Edit template' (for the current selection), and 'New template'."
+            description="When both a template is selected and filters are active, the menu shows all options: the template list, a divider, 'Edit template' (for the current selection), and 'Save as new template'."
           >
             <div className="flex justify-end">
               <div className="relative inline-flex flex-col items-end gap-1">
                 <TemplateChip name="My Cool Template" selected />
-                <DropdownMenu items={['My Cool Template', 'Finance Only', '---', 'Edit template', 'New template']} />
+                <DropdownMenu items={['My Cool Template', 'Finance Only', '---', 'Edit template', 'Save as new template']} />
               </div>
             </div>
           </StateCard>
@@ -491,7 +499,7 @@ export default function DocumentationPage({ onBack }) {
           <StateCard
             side
             title="13. Create template form"
-            description="Accessed via 'New template' in the template menu. The user enters a name and optionally marks it visible to all users. Clicking Save stores the template with the current filter selections and selects it immediately."
+            description="Accessed via 'Save as new template' in the template menu. The user enters a name and optionally marks it visible to all users. Clicking Save stores the template with the current filter selections and selects it immediately."
           >
             <div className="flex justify-end">
               <div className="relative inline-flex flex-col items-end gap-1">
@@ -522,17 +530,24 @@ export default function DocumentationPage({ onBack }) {
             <p className="text-sm font-bold" style={{ color: '#92400e' }}>The following states have no defined behavior yet:</p>
             <ul className="flex flex-col gap-2.5 text-sm" style={{ color: '#78350f' }}>
               {[
-                'Filters changed after loading — if the user modifies chips after clicking Load, the table still shows the old results. It is unclear whether the Load button should re-activate or whether a "stale results" indicator should appear.',
-                'Template de-selection — there is no way to deselect an active template and return to "No template" without clearing the chips manually.',
-                'Template with empty selections — if a template is saved while no chips are active, selecting it will load all rows with no filtering. There is no warning that the template captures no filter state.',
-                'Filters changed after template selection — if the user selects a template (which loads data) and then modifies a chip, the active template name is still shown even though the current filter state no longer matches the template.',
-                '"Save as New" naming conflict — if the user types an existing template name in the edit form and clicks "Save as New", a duplicate entry will be created. There is no deduplication or warning.',
-                'Load button state after clearing chips — after chips are cleared, the Load button returns to inactive, but the table still shows the previously loaded data. It is unclear whether the table should also clear.',
-                'Optional chips after template load — if the user loads a template that includes optional chips (e.g. Billing cycle), those chips appear. But if the user then clears the template selection, the optional chips remain visible with no clear way to remove them.',
                 'Optional chip removal — there is no way to remove an optional chip once added, short of refreshing the page. Behavior after loading a template that does not include a previously added optional chip is undefined.',
               ].map((item, i) => (
                 <li key={i} className="flex gap-2">
-                  <span className="mt-0.5 shrink-0">•</span>
+                  <span className="mt-0.5 shrink-0 font-bold">{i + 1}.</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm font-bold mt-1" style={{ color: '#92400e' }}>Okay for now:</p>
+            <ul className="flex flex-col gap-2.5 text-sm" style={{ color: '#78350f' }}>
+              {[
+                'Template de-selection — there is no way to deselect an active template and return to "No template" without clearing the chips manually. A page refresh also clears it.',
+                'Filters changed after template selection — if the user selects a template (which loads data) and then modifies a chip, the active template name is still shown even though the current filter state no longer matches the template.',
+                '"Save as new template" naming conflict — if the user types an existing template name and clicks "Save as new template", a duplicate entry will be created. There is no deduplication or warning.',
+                'Optional chips after template load — if the user loads a template that includes optional chips (e.g. Billing cycle), those chips appear. But if the user then clears the template selection, the optional chips remain visible with no clear way to remove them.',
+              ].map((item, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="mt-0.5 shrink-0 font-bold">{i + 1}.</span>
                   <span>{item}</span>
                 </li>
               ))}
