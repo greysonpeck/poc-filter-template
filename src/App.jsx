@@ -142,8 +142,8 @@ export default function App() {
         <div className="px-3 pb-2">
           <button
             onClick={() => setPage('docs')}
-            className="text-base text-left w-full px-2 py-1.5 rounded transition-colors cursor-pointer"
-            style={{ color: 'rgba(255,255,255,0.45)' }}
+            className="text-base font-bold text-left w-full px-2 py-1.5 rounded transition-colors cursor-pointer"
+            style={{ color: 'rgba(255,255,255,0.85)' }}
             onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,100)'}
             onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.85)'}
           >
@@ -1063,11 +1063,7 @@ function ElementsLogo() {
   return (
     <div className="flex items-center gap-2.5">
       {/* Mark: green lightning-bolt style icon */}
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <rect width="28" height="28" rx="5" fill="#33a642" />
-        {/* Stylized "F" / field service bolt */}
-        <path d="M9 7h10v3H12v3h6v3h-6v5H9V7z" fill="white" />
-      </svg>
+
       <span className="font-bold text-base tracking-wide text-white">Elements</span>
     </div>
   )
