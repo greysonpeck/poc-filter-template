@@ -113,7 +113,7 @@ export default function App() {
 
         {/* Logo area */}
         <div className="h-14 flex items-center px-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <FieldEdgeLogo />
+          <ElementsLogo />
         </div>
 
         {/* Nav items */}
@@ -122,12 +122,8 @@ export default function App() {
           {/* Home */}
           <NavItem icon={<HomeIcon />} label="Home" />
 
-          {/* Customers (group, expanded) */}
-          <NavItem icon={<UsersIcon />} label="Customers" hasChevron />
-          <div className="pl-8 flex flex-col gap-0.5">
-            <SubNavItem label="All Customers" />
-            <SubNavItem label="Contacts" />
-          </div>
+          {/* Customers */}
+          <NavItem icon={<UsersIcon />} label="Customers" />
 
           {/* Work Orders */}
           <NavItem icon={<ClipboardListIcon />} label="Work Orders" />
@@ -146,10 +142,10 @@ export default function App() {
         <div className="px-3 pb-2">
           <button
             onClick={() => setPage('docs')}
-            className="text-base text-left w-full px-2 py-1.5 rounded transition-colors"
+            className="text-base text-left w-full px-2 py-1.5 rounded transition-colors cursor-pointer"
             style={{ color: 'rgba(255,255,255,0.45)' }}
             onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,100)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.75)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.85)'}
           >
             Documentation
           </button>
@@ -989,30 +985,27 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
               </tr>
             </thead>
             <tbody>
-              {sorted.length === 0 ? (
-                <tr>
-                  <td colSpan={cols.length} className="px-3 py-8 text-center text-sm text-[#62748e]">
-                    {loadedData === null
-                      ? 'Choose at least one filter then click Load.'
-                      : 'No results match your search.'}
-                  </td>
+              {sorted.map((row, i) => (
+                <tr key={i} className="border-b border-[#f3f4f6] hover:bg-gray-50">
+                  {cols.map(col => (
+                    <td key={col.field} style={{ minWidth: col.width, width: col.width }} className="px-3 py-2.5 whitespace-nowrap">
+                      {col.field === 'balance'
+                        ? (row.balance != null ? `$${Number(row.balance).toLocaleString()}` : '')
+                        : row[col.field]}
+                    </td>
+                  ))}
                 </tr>
-              ) : (
-                sorted.map((row, i) => (
-                  <tr key={i} className="border-b border-[#f3f4f6] hover:bg-gray-50">
-                    {cols.map(col => (
-                      <td key={col.field} style={{ minWidth: col.width, width: col.width }} className="px-3 py-2.5 whitespace-nowrap">
-                        {col.field === 'balance'
-                          ? (row.balance != null ? `$${Number(row.balance).toLocaleString()}` : '')
-                          : row[col.field]}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
+        {sorted.length === 0 && (
+          <div className="py-8 text-center text-sm text-[#62748e]">
+            {loadedData === null
+              ? 'Choose at least one filter then click Load.'
+              : 'No results match your search.'}
+          </div>
+        )}
 
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/75 z-20 pointer-events-none">
@@ -1066,7 +1059,7 @@ function ClockIcon() {
   )
 }
 
-function FieldEdgeLogo() {
+function ElementsLogo() {
   return (
     <div className="flex items-center gap-2.5">
       {/* Mark: green lightning-bolt style icon */}
@@ -1075,7 +1068,7 @@ function FieldEdgeLogo() {
         {/* Stylized "F" / field service bolt */}
         <path d="M9 7h10v3H12v3h6v3h-6v5H9V7z" fill="white" />
       </svg>
-      <span className="font-bold text-base tracking-wide text-white">FieldEdge</span>
+      <span className="font-bold text-base tracking-wide text-white">Elements</span>
     </div>
   )
 }
