@@ -1,7 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import { Grid, GridColumn as Column, GridToolbar, GridNoRecords } from '@progress/kendo-react-grid'
-import { orderBy } from '@progress/kendo-data-query'
-import '@progress/kendo-theme-default/dist/all.css'
 import DocumentationPage from './DocumentationPage'
 
 function Toast({ message, variant = 'success' }) {
@@ -26,6 +23,7 @@ export default function App() {
   const [loadedData, setLoadedData] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [chipSelections, setChipSelections] = useState({ status: new Set(), finance: new Set(), type: new Set(), class: new Set(), billingCycle: new Set() })
+  const [criteriaFilter, setCriteriaFilter] = useState({ operator: 'Greater than', value: '' })
   const [activeOptionalFields, setActiveOptionalFields] = useState([])
   const [loadReady, setLoadReady] = useState(false)
   const [toast, setToast] = useState(null)
@@ -37,20 +35,39 @@ export default function App() {
 
   if (page === 'docs') return <DocumentationPage onBack={() => setPage('main')} />
 
-  const anyChipActive = Object.values(chipSelections).some(s => s.size > 0)
+  const criteriaActive = !!(criteriaFilter.operator && criteriaFilter.value)
+  const anyChipActive = Object.values(chipSelections).some(s => s.size > 0) || criteriaActive
 
   function updateChip(field, newSet) {
     setChipSelections(prev => {
       const next = { ...prev, [field]: newSet }
-      setLoadReady(Object.values(next).some(s => s.size > 0))
+      setLoadReady(Object.values(next).some(s => s.size > 0) || criteriaActive)
       return next
     })
   }
 
-  function applyFilter(sels) {
-    const filtered = ROWS.filter(row =>
-      Object.entries(sels).every(([field, vals]) => vals.size === 0 || vals.has(row[field]))
-    )
+  function updateCriteria(next) {
+    setCriteriaFilter(next)
+    const active = !!(next.operator && next.value)
+    setLoadReady(Object.values(chipSelections).some(s => s.size > 0) || active)
+  }
+
+  function applyFilter(sels, criteria) {
+    const filtered = ROWS.filter(row => {
+      if (!Object.entries(sels).every(([field, vals]) => vals.size === 0 || vals.has(row[field]))) return false
+      if (criteria?.operator && criteria?.value) {
+        const threshold = Number(criteria.value)
+        switch (criteria.operator) {
+          case 'Greater than':             return row.balance >  threshold
+          case 'Less than':                return row.balance <  threshold
+          case 'Equal to':                 return row.balance === threshold
+          case 'Greater than or equal to': return row.balance >= threshold
+          case 'Less than or equal to':    return row.balance <= threshold
+          default: return true
+        }
+      }
+      return true
+    })
     setIsLoading(true)
     setLoadReady(false)
     setTimeout(() => {
@@ -64,7 +81,7 @@ export default function App() {
       showToast('Select at least one filter before loading.', 'neutral')
       return
     }
-    applyFilter(chipSelections)
+    applyFilter(chipSelections, criteriaFilter)
   }
 
   function handleSelectTemplate(template) {
@@ -243,6 +260,7 @@ export default function App() {
                       onChange={s => updateChip(field, s)} />
                   )
                 })}
+                <CriteriaChip value={criteriaFilter} onChange={updateCriteria} />
                 <AddChip
                   options={OPTIONAL_FIELDS.filter(f => !activeOptionalFields.includes(f.field))}
                   onAdd={addOptionalField}
@@ -296,16 +314,16 @@ function SubNavItem({ label }) {
 }
 
 const ROWS = [
-  { customerName: "prashant Demo' quick", customerId: '9100650', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'prashant.sharma@routeware.com', class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes' },
-  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Alpha',   billingCycle: '28 day', status: 'Active',   finance: 'No'  },
-  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'A/R Note',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Default', billingCycle: '28 day', status: 'Inactive', finance: 'Yes' },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes' },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS FILE',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Alpha',   billingCycle: '14 day', status: 'Active',   finance: 'No'  },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '28 day', status: 'Pending',  finance: 'No'  },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'CALL',      date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '14 day', status: 'Active',   finance: 'Yes' },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '28 day', status: 'Active',   finance: 'Yes' },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'UPDATE',    date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '14 day', status: 'Inactive', finance: 'No'  },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '28 day', status: 'Active',   finance: 'Yes' },
+  { customerName: "prashant Demo' quick", customerId: '9100650', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'prashant.sharma@routeware.com', class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', amount: 12500, balance: 47200  },
+  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Alpha',   billingCycle: '28 day', status: 'Active',   finance: 'No',  amount: 3200,  balance: 8500   },
+  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'A/R Note',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Default', billingCycle: '28 day', status: 'Inactive', finance: 'Yes', amount: 750,   balance: 1000   },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', amount: 8900,  balance: 63000  },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS FILE',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Alpha',   billingCycle: '14 day', status: 'Active',   finance: 'No',  amount: 5000,  balance: 22400  },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '28 day', status: 'Pending',  finance: 'No',  amount: 1100,  balance: 3750   },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'CALL',      date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '14 day', status: 'Active',   finance: 'Yes', amount: 22000, balance: 91500  },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '28 day', status: 'Active',   finance: 'Yes', amount: 4750,  balance: 15800  },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'UPDATE',    date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '14 day', status: 'Inactive', finance: 'No',  amount: 300,   balance: 1200   },
+  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '28 day', status: 'Active',   finance: 'Yes', amount: 9600,  balance: 38600  },
 ]
 
 const OPTIONAL_FIELDS = [
@@ -322,6 +340,7 @@ const COLUMNS = [
   { key: 'detail', label: 'Detail', width: 180 },
   { key: 'class', label: 'Class', width: 140 },
   { key: 'status', label: 'Status', width: 100 },
+  { key: 'balance', label: 'Balance', width: 120 },
 ]
 
 const TEMPLATES_KEY = 'fe_templates'
@@ -643,6 +662,110 @@ function AddChip({ options = [], onAdd }) {
   )
 }
 
+const OPERATORS = [
+  { label: 'Greater than',             symbol: '>' },
+  { label: 'Less than',                symbol: '<' },
+  { label: 'Equal to',                 symbol: '=' },
+  { label: 'Greater than or equal to', symbol: '≥' },
+  { label: 'Less than or equal to',    symbol: '≤' },
+]
+
+function CriteriaChip({ value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [operatorOpen, setOperatorOpen] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const ref = useRef(null)
+
+  const { operator, value: amount } = value
+  const isActive = !!(operator && amount)
+  const colors = CHIP_COLORS.default
+  const bgDefault = isActive ? colors.bgActive : colors.bgInactive
+  const bgHover   = isActive ? colors.bgActiveHover : colors.bgInactiveHover
+  const textColor = isActive ? colors.textActive : colors.textInactive
+  const bg = hovered || (open && !isActive) ? bgHover : bgDefault
+
+  const op = OPERATORS.find(o => o.label === operator)
+  const fmt = v => '$' + Number(v).toLocaleString()
+  const chipLabel = isActive ? `${operator} ${fmt(amount)}` : 'Criteria'
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setOperatorOpen(false) }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const clear = e => {
+    e.stopPropagation()
+    onChange({ operator: '', value: '' })
+    setOpen(false)
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-[6px] rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer"
+        style={{ backgroundColor: bg, color: textColor, paddingLeft: 12, paddingRight: isActive ? 6 : 12, paddingTop: 2, paddingBottom: 2 }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {chipLabel}
+        {isActive && (
+          <span onClick={clear} className="flex items-center justify-center w-5 h-5 shrink-0">
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 bg-white border border-[#d1d5dc] rounded shadow-lg z-[9999] p-3 flex flex-col gap-2" style={{ minWidth: 220 }}>
+          <p className="text-xs text-gray-500">This filter will apply to the Balance field.</p>
+          {/* Operator */}
+          <div className="relative">
+            <button
+              className="w-full flex items-center justify-between px-3 py-1.5 border rounded text-sm bg-white hover:bg-gray-50 cursor-pointer"
+              style={{ borderColor: '#d1d5dc', color: operator ? '#364153' : '#99a1af' }}
+              onClick={() => setOperatorOpen(v => !v)}
+            >
+              <span>{operator || 'Select operator'}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M6 9l6 6 6-6" stroke="#99a1af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {operatorOpen && (
+              <div className="absolute left-0 top-full mt-0.5 w-full bg-white border border-[#d1d5dc] rounded shadow-lg z-[10000] py-1">
+                {OPERATORS.map(o => (
+                  <button key={o.label} className="w-full text-left px-3 py-1.5 text-sm text-[#364153] hover:bg-gray-50 cursor-pointer"
+                    onClick={() => { onChange({ ...value, operator: o.label }); setOperatorOpen(false) }}>
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Dollar value */}
+          <div className="flex items-center border rounded overflow-hidden" style={{ borderColor: '#d1d5dc' }}>
+            <span className="px-2.5 py-1.5 text-sm font-semibold bg-gray-50 border-r select-none" style={{ borderColor: '#d1d5dc', color: '#364153' }}>$</span>
+            <input
+              type="number"
+              min="0"
+              placeholder="0"
+              value={amount}
+              onChange={e => onChange({ ...value, value: e.target.value })}
+              className="flex-1 px-2.5 py-1.5 text-sm text-[#364153] outline-none bg-white w-full"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function FilterChip({ label, values, variant = 'default', value, onChange }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -716,6 +839,7 @@ function FilterChip({ label, values, variant = 'default', value, onChange }) {
   )
 }
 
+
 const ALL_COLUMNS = [
   { field: 'customerName', title: 'Customer Name', width: 200 },
   { field: 'customerId',   title: 'Customer ID',   width: 140 },
@@ -726,11 +850,26 @@ const ALL_COLUMNS = [
   { field: 'contact',      title: 'Contact',       width: 260 },
   { field: 'class',        title: 'Class',         width: 140 },
   { field: 'billingCycle', title: 'Billing cycle', width: 140 },
+  { field: 'balance',      title: 'Balance',       width: 120 },
 ]
+
+function sortRows(rows, sort) {
+  if (!sort || sort.length === 0) return rows
+  return [...rows].sort((a, b) => {
+    for (const { field, dir } of sort) {
+      const av = a[field] ?? ''
+      const bv = b[field] ?? ''
+      const cmp = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv))
+      if (cmp !== 0) return dir === 'asc' ? cmp : -cmp
+    }
+    return 0
+  })
+}
 
 function ActivityHistoryTable({ loadedData, isLoading }) {
   const [sort, setSort] = useState([])
-  const [group, setGroup] = useState([])
   const [search, setSearch] = useState('')
   const [visibleCols, setVisibleCols] = useState(() => new Set(ALL_COLUMNS.map(c => c.field)))
   const [showChooser, setShowChooser] = useState(false)
@@ -746,36 +885,34 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [showChooser])
 
+  function toggleSort(field) {
+    setSort(prev => {
+      const existing = prev.find(s => s.field === field)
+      if (!existing) return [{ field, dir: 'asc' }]
+      if (existing.dir === 'asc') return [{ field, dir: 'desc' }]
+      return []
+    })
+  }
+
   // Global search: keep rows where any field contains the search string
   const baseRows = loadedData ?? []
   const searched = search
     ? baseRows.filter(row => Object.values(row).some(v => String(v).toLowerCase().includes(search.toLowerCase())))
     : baseRows
 
-  const data = orderBy(searched, sort)
+  const sorted = sortRows(searched, sort)
+  const cols = ALL_COLUMNS.filter(c => visibleCols.has(c.field))
 
   return (
     <div className="flex flex-col gap-[11px] items-end w-full">
+      <div className="w-full relative border border-[#d1d5dc] rounded" style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
 
-      {/* Kendo Grid — grouping header is the dashed drop zone; search/chooser overlaid on right */}
-      <div className="w-full activity-grid relative">
-        <Grid
-          data={data}
-          sortable
-          sort={sort}
-          onSortChange={e => setSort(e.sort)}
-          groupable={{ footer: 'none', enabled: true }}
-          group={group}
-          style={{ fontFamily: "'Nunito Sans', sans-serif" }}
-          onGroupChange={e => setGroup(e.group)}
-        >
-          <GridNoRecords>
-            <span className="text-sm text-[#62748e]">Choose at least one filter then click Load.</span>
-          </GridNoRecords>
-          {ALL_COLUMNS.filter(c => visibleCols.has(c.field)).map(col => (
-            <Column key={col.field} field={col.field} title={col.title} width={col.width} />
-          ))}
-        </Grid>
+        {/* Grouping zone bar — visual only, dead/inactive */}
+        <div className="bg-gray-100 border-b border-[#d1d5dc] px-3.5 py-3.5" style={{ paddingRight: 320 }}>
+          <div className="border border-dashed border-[#99a1af] rounded-sm px-3 py-2 inline-flex items-center min-w-0">
+            <span className="text-xs text-[#364153] whitespace-nowrap">Drag and drop columns here to group the results</span>
+          </div>
+        </div>
 
         {/* Search + column chooser — absolutely overlaid on the right of the grouping header */}
         <div className="absolute top-0 right-0 flex items-center gap-3 p-[10px] z-10" ref={chooserRef}>
@@ -816,6 +953,67 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
             )}
           </div>
         </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm text-[#364153]">
+            <thead>
+              <tr className="border-b border-[#d1d5dc] bg-white">
+                {cols.map(col => {
+                  const s = sort.find(s => s.field === col.field)
+                  return (
+                    <th
+                      key={col.field}
+                      style={{ minWidth: col.width, width: col.width }}
+                      className="text-left px-3 py-2.5 font-semibold text-xs text-[#364153] whitespace-nowrap cursor-pointer select-none hover:bg-gray-50"
+                      onClick={() => toggleSort(col.field)}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {col.title}
+                        {s ? (
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0">
+                            {s.dir === 'asc'
+                              ? <path d="M6 9V3M3 6l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              : <path d="M6 3v6M3 6l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />}
+                          </svg>
+                        ) : (
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[#99a1af]">
+                            <path d="M6 9V3M3 6l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+                            <path d="M6 3v6M3 6l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+                          </svg>
+                        )}
+                      </span>
+                    </th>
+                  )
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.length === 0 ? (
+                <tr>
+                  <td colSpan={cols.length} className="px-3 py-8 text-center text-sm text-[#62748e]">
+                    {loadedData === null
+                      ? 'Choose at least one filter then click Load.'
+                      : 'No results match your search.'}
+                  </td>
+                </tr>
+              ) : (
+                sorted.map((row, i) => (
+                  <tr key={i} className="border-b border-[#f3f4f6] hover:bg-gray-50">
+                    {cols.map(col => (
+                      <td key={col.field} style={{ minWidth: col.width, width: col.width }} className="px-3 py-2.5 whitespace-nowrap">
+                        {col.field === 'balance'
+                          ? (row.balance != null ? `$${Number(row.balance).toLocaleString()}` : '')
+                          : row[col.field]}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/75 z-20 pointer-events-none">
             <span className="flex items-center gap-2 text-sm text-[#62748e]">
@@ -828,45 +1026,6 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
           </div>
         )}
       </div>
-
-      <style>{`
-        /* Hide trial watermark */
-        .k-licensing-watermark { display: none !important; }
-
-        /* Remove zebra stripes */
-        .activity-grid .k-grid-table tr:nth-child(even) td,
-        .activity-grid .k-grid-table tr.k-alt td {
-          background-color: #fff !important;
-        }
-
-        /* Grouping header is the dashed drag-and-drop zone */
-        .activity-grid .k-grouping-header {
-          background: #f3f4f6;
-          border-bottom: 1px solid #d1d5dc;
-          padding: 14px;
-          /* Leave room on the right for the overlaid search + chooser (~310px) */
-          padding-right: 320px;
-          min-height: 44px;
-        }
-        .activity-grid .k-grouping-header .k-indicator-container {
-          border: 1px dashed #99a1af;
-          border-radius: 2px;
-          padding: 8px 12px;
-          display: inline-flex;
-          align-items: center;
-          min-height: unset;
-        }
-        .activity-grid .k-grouping-header .k-indicator-container:empty::before {
-          content: "Drag and drop columns here to group the results";
-          font-size: 12px;
-          color: #364153;
-          white-space: nowrap;
-        }
-        .activity-grid .k-grouping-header .k-chip {
-          background: white;
-          border-color: #858fa2;
-        }
-      `}</style>
     </div>
   )
 }

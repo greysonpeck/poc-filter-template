@@ -250,7 +250,7 @@ function StateCard({ title, description, children, side = false }) {
             <h3 className="font-bold text-[15px]" style={{ color: NAVY }}>{title}</h3>
             <p className="text-sm" style={{ color: '#4b5563' }}>{description}</p>
           </div>
-          <div className="flex-1 flex items-center justify-center p-5" style={{ backgroundColor: '#f2f6f9', borderLeft: `1px solid ${GRAY_200}` }}>
+          <div className="flex-1 flex items-center justify-center p-5 bg-white" style={{ borderLeft: `1px solid ${GRAY_200}` }}>
             {children}
           </div>
         </div>
@@ -263,7 +263,7 @@ function StateCard({ title, description, children, side = false }) {
         <h3 className="font-bold text-[15px]" style={{ color: NAVY }}>{title}</h3>
         <p className="text-sm mt-0.5" style={{ color: '#4b5563' }}>{description}</p>
       </div>
-      <div className="rounded-lg p-4" style={{ backgroundColor: '#f2f6f9', border: `1px solid ${GRAY_200}` }}>
+      <div className="rounded-lg p-4 bg-white" style={{ border: `1px solid ${GRAY_200}` }}>
         {children}
       </div>
     </div>
