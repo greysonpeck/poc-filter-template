@@ -166,7 +166,83 @@ function TemplateForm({ prefilled = '', visibleToAll = false, isEdit = false }) 
   )
 }
 
-const TABLE_COLS = ['Customer Name', 'Customer ID', 'Type', 'Date', 'Contact', 'Class', 'Billing cycle']
+const CRITERIA_COLUMN_OPTIONS = [
+  { label: 'All',                 key: 'all' },
+  { label: 'Any Bucket',          key: 'anyBucket' },
+  { divider: true },
+  { label: 'AgBal0 (Current)',    key: 'current' },
+  { label: 'Aging 1+ (Past due)', key: 'aging1Plus' },
+  { label: 'Aging 2+ (30+ days)', key: 'aging2Plus' },
+  { label: 'Aging 3+ (60+ days)', key: 'aging3Plus' },
+  { label: 'Aging 4+ (90+ days)', key: 'aging4Plus' },
+  { divider: true },
+  { label: 'Unapplied',           key: 'unapplied' },
+  { label: 'Account Balance',     key: 'accountBalance' },
+]
+
+const CRITERIA_OPERATORS = ['Greater than', 'Greater than or equal to', 'Less than', 'Less than or equal to', 'Equal to']
+
+function CriteriaPopover({ columnKey = '', operator = '', amount = '', showColumnMenu = false, showOperatorMenu = false }) {
+  const colDef = CRITERIA_COLUMN_OPTIONS.find(c => !c.divider && c.key === columnKey)
+  const isActive = !!(columnKey && operator && amount)
+  const chipBg  = isActive ? SKY_200 : SKY_50
+  const chipColor = isActive ? SKY_900 : SKY_800
+  const chipLabel = isActive ? `${colDef?.label}: ${operator} $${Number(amount).toLocaleString()}` : 'Criteria'
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <div className="flex items-center gap-1.5 rounded-2xl text-sm font-semibold whitespace-nowrap px-3 py-0.5" style={{ backgroundColor: chipBg, color: chipColor }}>
+        {chipLabel}
+        {isActive && (
+          <span className="flex items-center justify-center w-5 h-5 shrink-0">
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </span>
+        )}
+      </div>
+      <div className="rounded border bg-white flex flex-col gap-2 p-3" style={{ borderColor: GRAY_200, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', minWidth: 240 }}>
+        {/* Column selector */}
+        <div className="relative">
+          <div className="w-full flex items-center justify-between px-3 py-1.5 border rounded text-sm bg-white" style={{ borderColor: GRAY_200, color: colDef ? GRAY_700 : GRAY_400 }}>
+            <span>{colDef?.label || 'Select column'}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke={GRAY_400} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </div>
+          {showColumnMenu && (
+            <div className="absolute left-0 top-full mt-0.5 w-full bg-white border rounded shadow-lg py-1 z-10" style={{ borderColor: GRAY_200 }}>
+              {CRITERIA_COLUMN_OPTIONS.map((col, i) =>
+                col.divider
+                  ? <div key={i} className="my-1 border-t" style={{ borderColor: GRAY_200 }} />
+                  : <div key={col.key} className={`px-3 py-1.5 text-sm`} style={{ color: col.key === columnKey ? SKY_900 : GRAY_700, backgroundColor: col.key === columnKey ? SKY_50 : 'transparent' }}>{col.label}</div>
+              )}
+            </div>
+          )}
+        </div>
+        {/* Operator */}
+        <div className="relative">
+          <div className="w-full flex items-center justify-between px-3 py-1.5 border rounded text-sm bg-white" style={{ borderColor: GRAY_200, color: operator ? GRAY_700 : GRAY_400 }}>
+            <span>{operator || 'Select operator'}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke={GRAY_400} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </div>
+          {showOperatorMenu && (
+            <div className="absolute left-0 top-full mt-0.5 w-full bg-white border rounded shadow-lg py-1 z-10" style={{ borderColor: GRAY_200 }}>
+              {CRITERIA_OPERATORS.map(op => (
+                <div key={op} className="px-3 py-1.5 text-sm" style={{ color: op === operator ? SKY_900 : GRAY_700, backgroundColor: op === operator ? SKY_50 : 'transparent' }}>{op}</div>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Dollar input */}
+        <div className="flex items-center border rounded overflow-hidden" style={{ borderColor: GRAY_200 }}>
+          <span className="px-2.5 py-1.5 text-sm font-semibold border-r select-none" style={{ borderColor: GRAY_200, color: GRAY_700, backgroundColor: '#f9fafb' }}>$</span>
+          <span className="flex-1 px-2.5 py-1.5 text-sm" style={{ color: amount ? GRAY_700 : GRAY_400 }}>{amount || '0'}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const TABLE_COLS = ['Customer Name', 'Customer ID', 'Class', 'Billing cycle', 'AgeBal0', 'AgeBal4+', 'Balance']
 
 function EmptyTableState({ message = 'Choose at least one filter then click Load.' }) {
   return (
@@ -185,9 +261,9 @@ function EmptyTableState({ message = 'Choose at least one filter then click Load
 
 function LoadedTableState() {
   const rows = [
-    { name: "prashant Demo' quick", id: '9100650', type: 'SYS EMAIL', date: 'Mar 13, 2026', contact: 'prashant.sharma@routeware.com', cls: 'Default', billing: '14 day' },
-    { name: 'Jeffs QA Shop',        id: '9100624', type: 'SYS EMAIL', date: 'Mar 13, 2026', contact: 'jgardner@routeware.com',          cls: 'Alpha',   billing: '28 day' },
-    { name: 'John Muir College',    id: '300212',  type: 'CALL',      date: 'Mar 13, 2026', contact: 'arpitstpss@gmail.com',            cls: 'Beta',    billing: '14 day' },
+    { name: 'Harvest Moon Bistro',     id: '9100650', cls: 'Default', billing: '14 day', b0: '0.00',    b4: '19.00',      bal: '60,765.53' },
+    { name: 'Blue Ridge Plumbing Co.', id: '9100624', cls: 'Alpha',   billing: '28 day', b0: '0.00',    b4: '0.00',       bal: '152.88'    },
+    { name: 'Westlake Academy',        id: '300212',  cls: 'Default', billing: '14 day', b0: '0.00',    b4: '21,811.20',  bal: '23,174.40' },
   ]
   return (
     <div className="border rounded bg-white overflow-hidden" style={{ borderColor: GRAY_200 }}>
@@ -200,11 +276,11 @@ function LoadedTableState() {
         <div key={i} className="grid grid-cols-7 px-3 py-1.5 gap-2 border-b last:border-b-0" style={{ borderColor: GRAY_200 }}>
           <span className="text-xs truncate" style={{ color: GRAY_700 }}>{r.name}</span>
           <span className="text-xs" style={{ color: GRAY_700 }}>{r.id}</span>
-          <span className="text-xs" style={{ color: GRAY_700 }}>{r.type}</span>
-          <span className="text-xs" style={{ color: GRAY_700 }}>{r.date}</span>
-          <span className="text-xs truncate" style={{ color: GRAY_700 }}>{r.contact}</span>
           <span className="text-xs" style={{ color: GRAY_700 }}>{r.cls}</span>
           <span className="text-xs" style={{ color: GRAY_700 }}>{r.billing}</span>
+          <span className="text-xs text-right tabular-nums" style={{ color: GRAY_700 }}>{r.b0}</span>
+          <span className="text-xs text-right tabular-nums" style={{ color: GRAY_700 }}>{r.b4}</span>
+          <span className="text-xs text-right tabular-nums" style={{ color: GRAY_700 }}>{r.bal}</span>
         </div>
       ))}
     </div>
@@ -459,7 +535,24 @@ export default function DocumentationPage({ onBack }) {
 
           <StateCard
             side
-            title="10. Template menu — no filters active"
+            title="10. Criteria chip popover"
+            description="The Criteria chip opens a three-field popover: a column selector (which bucket or total to filter on), an operator, and a dollar value. The chip label updates to reflect the active selection. Clicking × clears the value but preserves the column and operator for the next use."
+          >
+            <div className="flex items-start gap-8 flex-wrap">
+              <div className="flex flex-col gap-1">
+                <p className="text-xs font-semibold mb-1" style={{ color: SLATE_500 }}>Inactive — column menu open</p>
+                <CriteriaPopover showColumnMenu />
+              </div>
+              <div className="flex flex-col gap-1">
+                <p className="text-xs font-semibold mb-1" style={{ color: SLATE_500 }}>Active — operator menu open</p>
+                <CriteriaPopover columnKey="aging2Plus" operator="Greater than" amount="500" showOperatorMenu />
+              </div>
+            </div>
+          </StateCard>
+
+          <StateCard
+            side
+            title="11. Template menu — no filters active"
             description="When no filter chips are active, clicking the template chip shows only the list of saved templates. 'Edit template' and 'Save as new template' are hidden because no filter state is defined to save."
           >
             <div className="flex justify-end">
@@ -472,7 +565,7 @@ export default function DocumentationPage({ onBack }) {
 
           <StateCard
             side
-            title="11. Template menu — filters active, no template selected"
+            title="12. Template menu — filters active, no template selected"
             description="When filters are active but no template is selected, the menu shows the template list plus a divider and 'Save as new template'. 'Edit template' is omitted because there is no active template to edit."
           >
             <div className="flex justify-end">
@@ -485,7 +578,7 @@ export default function DocumentationPage({ onBack }) {
 
           <StateCard
             side
-            title="12. Template menu — filters active, template selected"
+            title="13. Template menu — filters active, template selected"
             description="When both a template is selected and filters are active, the menu shows all options: the template list, a divider, 'Edit template' (for the current selection), and 'Save as new template'."
           >
             <div className="flex justify-end">
@@ -498,7 +591,7 @@ export default function DocumentationPage({ onBack }) {
 
           <StateCard
             side
-            title="13. Create template form"
+            title="14. Create template form"
             description="Accessed via 'Save as new template' in the template menu. The user enters a name and optionally marks it visible to all users. Clicking Save stores the template with the current filter selections and selects it immediately."
           >
             <div className="flex justify-end">
@@ -511,7 +604,7 @@ export default function DocumentationPage({ onBack }) {
 
           <StateCard
             side
-            title="14. Edit template form"
+            title="15. Edit template form"
             description="Accessed via 'Edit template' when a template is currently selected. The form is pre-populated with the template's name and settings. The user can save changes, save as a new template, or delete the template entirely."
           >
             <div className="flex justify-end">

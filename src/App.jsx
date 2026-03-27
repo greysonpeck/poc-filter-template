@@ -22,8 +22,8 @@ export default function App() {
   const [page, setPage] = useState('main') // 'main' | 'docs'
   const [loadedData, setLoadedData] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [chipSelections, setChipSelections] = useState({ status: new Set(), finance: new Set(), type: new Set(), class: new Set(), billingCycle: new Set() })
-  const [criteriaFilter, setCriteriaFilter] = useState({ operator: 'Greater than', value: '' })
+  const [chipSelections, setChipSelections] = useState({ status: new Set(), billingCycle: new Set(), finance: new Set(), class: new Set() })
+  const [criteriaFilter, setCriteriaFilter] = useState({ column: 'accountBalance', operator: 'Greater than', value: '' })
   const [activeOptionalFields, setActiveOptionalFields] = useState([])
   const [loadReady, setLoadReady] = useState(false)
   const [toast, setToast] = useState(null)
@@ -35,7 +35,7 @@ export default function App() {
 
   if (page === 'docs') return <DocumentationPage onBack={() => setPage('main')} />
 
-  const criteriaActive = !!(criteriaFilter.operator && criteriaFilter.value)
+  const criteriaActive = !!(criteriaFilter.column && criteriaFilter.operator && criteriaFilter.value)
   const anyChipActive = Object.values(chipSelections).some(s => s.size > 0) || criteriaActive
 
   function updateChip(field, newSet) {
@@ -48,23 +48,28 @@ export default function App() {
 
   function updateCriteria(next) {
     setCriteriaFilter(next)
-    const active = !!(next.operator && next.value)
+    const active = !!(next.column && next.operator && next.value)
     setLoadReady(Object.values(chipSelections).some(s => s.size > 0) || active)
   }
 
   function applyFilter(sels, criteria) {
     const filtered = ROWS.filter(row => {
       if (!Object.entries(sels).every(([field, vals]) => vals.size === 0 || vals.has(row[field]))) return false
-      if (criteria?.operator && criteria?.value) {
+      if (criteria?.column && criteria?.operator && criteria?.value) {
         const threshold = Number(criteria.value)
-        switch (criteria.operator) {
-          case 'Greater than':             return row.balance >  threshold
-          case 'Less than':                return row.balance <  threshold
-          case 'Equal to':                 return row.balance === threshold
-          case 'Greater than or equal to': return row.balance >= threshold
-          case 'Less than or equal to':    return row.balance <= threshold
-          default: return true
+        const colDef = CRITERIA_COLUMNS.find(c => c.key === criteria.column)
+        const fields = colDef?.fields ?? ['balance']
+        const test = v => {
+          switch (criteria.operator) {
+            case 'Greater than':             return v >  threshold
+            case 'Less than':                return v <  threshold
+            case 'Equal to':                 return v === threshold
+            case 'Greater than or equal to': return v >= threshold
+            case 'Less than or equal to':    return v <= threshold
+            default: return true
+          }
         }
+        if (!fields.some(f => test(row[f] ?? 0))) return false
       }
       return true
     })
@@ -89,10 +94,9 @@ export default function App() {
     setActiveOptionalFields(optionals)
     const sels = {
       status:       new Set(template.selections?.status       ?? []),
-      finance:      new Set(template.selections?.finance      ?? []),
-      type:         new Set(template.selections?.type         ?? []),
-      class:        new Set(template.selections?.class        ?? []),
       billingCycle: new Set(template.selections?.billingCycle ?? []),
+      finance:      new Set(template.selections?.finance      ?? []),
+      class:        new Set(template.selections?.class        ?? []),
     }
     setChipSelections(sels)
     setLoadReady(true)
@@ -169,7 +173,7 @@ export default function App() {
 
           {/* Page title */}
           <span className="font-bold text-sm flex-1" style={{ color: '#1D2F5D' }}>
-            Report: Activity History
+            Receivables Management
           </span>
 
           {/* Right side icons */}
@@ -244,9 +248,9 @@ export default function App() {
             {/* Filter chips */}
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2">
-                <FilterChip label="Status"  field="status"  values={[...new Set(ROWS.map(r => r.status))]}  value={chipSelections.status}  onChange={s => updateChip('status',  s)} />
-                <FilterChip label="Finance" field="finance" values={[...new Set(ROWS.map(r => r.finance))]} value={chipSelections.finance} onChange={s => updateChip('finance', s)} />
-                <FilterChip label="Type"    field="type"    values={[...new Set(ROWS.map(r => r.type))]}    value={chipSelections.type}    onChange={s => updateChip('type',    s)} />
+                <FilterChip label="Status"        field="status"       values={[...new Set(ROWS.map(r => r.status))]}       value={chipSelections.status}       onChange={s => updateChip('status',       s)} />
+                <FilterChip label="Billing cycle" field="billingCycle" values={[...new Set(ROWS.map(r => r.billingCycle))]} value={chipSelections.billingCycle} onChange={s => updateChip('billingCycle', s)} />
+                <FilterChip label="Finance"       field="finance"      values={[...new Set(ROWS.map(r => r.finance))]}      value={chipSelections.finance}      onChange={s => updateChip('finance',      s)} />
                 {activeOptionalFields.map(field => {
                   const cfg = OPTIONAL_FIELDS.find(f => f.field === field)
                   return (
@@ -310,33 +314,38 @@ function SubNavItem({ label }) {
 }
 
 const ROWS = [
-  { customerName: "prashant Demo' quick", customerId: '9100650', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'prashant.sharma@routeware.com', class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', amount: 12500, balance: 47200  },
-  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Alpha',   billingCycle: '28 day', status: 'Active',   finance: 'No',  amount: 3200,  balance: 8500   },
-  { customerName: 'Jeffs QA Shop',        customerId: '9100624', type: 'A/R Note',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'jgardner@routeware.com',          class: 'Default', billingCycle: '28 day', status: 'Inactive', finance: 'Yes', amount: 750,   balance: 1000   },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', amount: 8900,  balance: 63000  },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS FILE',  date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Alpha',   billingCycle: '14 day', status: 'Active',   finance: 'No',  amount: 5000,  balance: 22400  },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '28 day', status: 'Pending',  finance: 'No',  amount: 1100,  balance: 3750   },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'CALL',      date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '14 day', status: 'Active',   finance: 'Yes', amount: 22000, balance: 91500  },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Beta',    billingCycle: '28 day', status: 'Active',   finance: 'Yes', amount: 4750,  balance: 15800  },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'UPDATE',    date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '14 day', status: 'Inactive', finance: 'No',  amount: 300,   balance: 1200   },
-  { customerName: 'John Muir College',    customerId: '300212',  type: 'SYS EMAIL', date: 'Mar 13, 2026', user: 'Juan Gomez', contact: 'arpitstpss@gmail.com',            class: 'Default', billingCycle: '28 day', status: 'Active',   finance: 'Yes', amount: 9600,  balance: 38600  },
+  { customerName: 'Harvest Moon Bistro',       customerId: '9100650', user: 'Juan Gomez',   class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 60746.53,   ageBal3: 0,       ageBal4Plus: 19.00,    unapplied: 0,        balance: 60765.53   },
+  { customerName: 'Blue Ridge Plumbing Co.',   customerId: '9100624', user: 'Juan Gomez',   class: 'Alpha',   billingCycle: '28 day', status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 252.88,  ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: -100.00,  balance: 152.88     },
+  { customerName: 'Sparrow & Sons Electric',   customerId: '9100601', user: 'Juan Gomez',   class: 'Default', billingCycle: '28 day', status: 'Inactive', finance: 'Yes', ageBal0: 0,       ageBal1: 2.20,    ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 2.20       },
+  { customerName: 'Westlake Academy',          customerId: '300212',  user: 'Maria Santos', class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 1363.20, ageBal4Plus: 21811.20, unapplied: 0,        balance: 23174.40   },
+  { customerName: 'Copper Kettle Diner',       customerId: '482901',  user: 'Maria Santos', class: 'Alpha',   billingCycle: '14 day', status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 92396.24, unapplied: -6821.09, balance: 85575.15   },
+  { customerName: 'Mesa Verde Roofing',        customerId: '482955',  user: 'Maria Santos', class: 'Beta',    billingCycle: '28 day', status: 'Pending',  finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 45.36,    unapplied: 0,        balance: 45.36      },
+  { customerName: 'Pinecrest Dental Group',    customerId: '482988',  user: 'Maria Santos', class: 'Beta',    billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 1176.12, ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 1176.12    },
+  { customerName: 'Summit Ridge Landscaping',  customerId: '771430',  user: 'Derek Hale',   class: 'Beta',    billingCycle: '28 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 3435.26,  unapplied: 0,        balance: 3435.26    },
+  { customerName: 'Clearwater HVAC Services',  customerId: '771488',  user: 'Derek Hale',   class: 'Default', billingCycle: '14 day', status: 'Inactive', finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 4130.10, ageBal4Plus: 55842.07, unapplied: 0,        balance: 59972.17   },
+  { customerName: 'Pinnacle Auto Group',       customerId: '334872',  user: 'Derek Hale',   class: 'Default', billingCycle: '28 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 2801.76,  unapplied: -105.00,  balance: 2696.76    },
+  { customerName: 'Ironwood Charter School',   customerId: '609115',  user: 'Maria Santos', class: 'Alpha',   billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 1842.50, ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 1842.50    },
+  { customerName: 'Pacific Crest Logistics',   customerId: '609177',  user: 'Maria Santos', class: 'Default', billingCycle: '28 day', status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 4167.95,    ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 4167.95 },
+  { customerName: 'Golden Gate Bakery',        customerId: '218763',  user: 'Juan Gomez',   class: 'Beta',    billingCycle: '14 day', status: 'Pending',  finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 287.01,   unapplied: 0,        balance: 287.01     },
+  { customerName: 'Redwood Valley Winery',     customerId: '218800',  user: 'Juan Gomez',   class: 'Alpha',   billingCycle: '28 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 245.38,   unapplied: 0,        balance: 245.38     },
+  { customerName: 'Lakeside Family Clinic',    customerId: '557294',  user: 'Derek Hale',   class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 1490.16,  unapplied: 0,        balance: 1490.16    },
+  { customerName: 'Northgate Hardware',        customerId: '557350',  user: 'Derek Hale',   class: 'Beta',    billingCycle: '28 day', status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 3523.10,  unapplied: 0,        balance: 3523.10    },
+  { customerName: 'Canyon View Tire & Auto',   customerId: '893041',  user: 'Maria Santos', class: 'Alpha',   billingCycle: '14 day', status: 'Inactive', finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 39141.97, unapplied: -189.90,  balance: 38952.07   },
+  { customerName: 'Maplewood Prep School',     customerId: '893099',  user: 'Maria Santos', class: 'Default', billingCycle: '28 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 200.00,   unapplied: 0,        balance: 200.00     },
+  { customerName: 'Frontier Pest Solutions',   customerId: '124580',  user: 'Derek Hale',   class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 2.20,     unapplied: 0,        balance: 2.20       },
+  { customerName: 'Starling Coffee Roasters',  customerId: '124642',  user: 'Derek Hale',   class: 'Beta',    billingCycle: '28 day', status: 'Pending',  finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 59972.17, unapplied: 0,        balance: 59972.17   },
 ]
 
 const OPTIONAL_FIELDS = [
-  { field: 'class',        label: 'Class' },
-  { field: 'billingCycle', label: 'Billing cycle' },
+  { field: 'class', label: 'Class' },
 ]
 
 const COLUMNS = [
   { key: 'customerName', label: 'Customer Name', flex: '1 0 0' },
-  { key: 'customerId', label: 'Customer ID', width: 140 },
-  { key: 'type', label: 'Type', width: 140 },
-  { key: 'date', label: 'Date', width: 140 },
-  { key: 'contact', label: 'Contact', width: 260 },
-  { key: 'detail', label: 'Detail', width: 180 },
-  { key: 'class', label: 'Class', width: 140 },
-  { key: 'status', label: 'Status', width: 100 },
-  { key: 'balance', label: 'Balance', width: 120 },
+  { key: 'customerId',   label: 'Customer ID',   width: 140 },
+  { key: 'class',        label: 'Class',         width: 140 },
+  { key: 'status',       label: 'Status',        width: 100 },
+  { key: 'balance',      label: 'Balance',       width: 120 },
 ]
 
 const TEMPLATES_KEY = 'fe_templates'
@@ -390,10 +399,9 @@ function TemplateControl({ currentSelections = {}, activeOptionalFields = [], on
     if (!name) return
     const selections = {
       status:          [...(currentSelections.status       ?? [])],
-      finance:         [...(currentSelections.finance      ?? [])],
-      type:            [...(currentSelections.type         ?? [])],
-      class:           [...(currentSelections.class        ?? [])],
       billingCycle:    [...(currentSelections.billingCycle ?? [])],
+      finance:         [...(currentSelections.finance      ?? [])],
+      class:           [...(currentSelections.class        ?? [])],
       _optionalFields: activeOptionalFields,
     }
     persist([...templates, { name, visibleToAll, selections }])
@@ -407,10 +415,9 @@ function TemplateControl({ currentSelections = {}, activeOptionalFields = [], on
     if (!name) return
     const selections = {
       status:          [...(currentSelections.status       ?? [])],
-      finance:         [...(currentSelections.finance      ?? [])],
-      type:            [...(currentSelections.type         ?? [])],
-      class:           [...(currentSelections.class        ?? [])],
       billingCycle:    [...(currentSelections.billingCycle ?? [])],
+      finance:         [...(currentSelections.finance      ?? [])],
+      class:           [...(currentSelections.class        ?? [])],
       _optionalFields: activeOptionalFields,
     }
     const next = templates.map(t =>
@@ -429,10 +436,9 @@ function TemplateControl({ currentSelections = {}, activeOptionalFields = [], on
     const selections = {
       ...base?.selections,
       status:          [...(currentSelections.status       ?? [])],
-      finance:         [...(currentSelections.finance      ?? [])],
-      type:            [...(currentSelections.type         ?? [])],
-      class:           [...(currentSelections.class        ?? [])],
       billingCycle:    [...(currentSelections.billingCycle ?? [])],
+      finance:         [...(currentSelections.finance      ?? [])],
+      class:           [...(currentSelections.class        ?? [])],
       _optionalFields: activeOptionalFields,
     }
     persist([...templates, { ...base, name, visibleToAll, selections }])
@@ -666,28 +672,45 @@ const OPERATORS = [
   { label: 'Less than or equal to',    symbol: '≤' },
 ]
 
+const CRITERIA_COLUMNS = [
+  { label: 'All',                    key: 'all',            fields: ['ageBal0', 'ageBal1', 'ageBal2', 'ageBal3', 'ageBal4Plus', 'unapplied', 'balance'] },
+  { label: 'Any Bucket',             key: 'anyBucket',      fields: ['ageBal0', 'ageBal1', 'ageBal2', 'ageBal3', 'ageBal4Plus'] },
+  { divider: true },
+  { label: 'Current',       key: 'current',        fields: ['ageBal0'] },
+  { label: 'Aging 1+ (Past due)',    key: 'aging1Plus',     fields: ['ageBal1', 'ageBal2', 'ageBal3', 'ageBal4Plus'] },
+  { label: 'Aging 2+ (30+ days)',    key: 'aging2Plus',     fields: ['ageBal2', 'ageBal3', 'ageBal4Plus'] },
+  { label: 'Aging 3+ (60+ days)',    key: 'aging3Plus',     fields: ['ageBal3', 'ageBal4Plus'] },
+  { label: 'Aging 4+ (90+ days)',    key: 'aging4Plus',     fields: ['ageBal4Plus'] },
+  { divider: true },
+  { label: 'Unapplied',              key: 'unapplied',      fields: ['unapplied'] },
+  { label: 'Account Balance',        key: 'accountBalance', fields: ['balance'] },
+]
+
 function CriteriaChip({ value, onChange }) {
   const [open, setOpen] = useState(false)
+  const [columnOpen, setColumnOpen] = useState(false)
   const [operatorOpen, setOperatorOpen] = useState(false)
   const [hovered, setHovered] = useState(false)
   const ref = useRef(null)
 
-  const { operator, value: amount } = value
-  const isActive = !!(operator && amount)
+  const { column, operator, value: amount } = value
+  const isActive = !!(column && operator && amount)
   const colors = CHIP_COLORS.default
   const bgDefault = isActive ? colors.bgActive : colors.bgInactive
   const bgHover   = isActive ? colors.bgActiveHover : colors.bgInactiveHover
   const textColor = isActive ? colors.textActive : colors.textInactive
   const bg = hovered || (open && !isActive) ? bgHover : bgDefault
 
-  const op = OPERATORS.find(o => o.label === operator)
+  const colDef = CRITERIA_COLUMNS.find(c => c.key === column)
   const fmt = v => '$' + Number(v).toLocaleString()
-  const chipLabel = isActive ? `${operator} ${fmt(amount)}` : 'Criteria'
+  const chipLabel = isActive ? `${colDef?.label ?? column}: ${operator} ${fmt(amount)}` : 'Criteria'
 
   useEffect(() => {
     if (!open) return
     function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setOperatorOpen(false) }
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false); setColumnOpen(false); setOperatorOpen(false)
+      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -695,7 +718,7 @@ function CriteriaChip({ value, onChange }) {
 
   const clear = e => {
     e.stopPropagation()
-    onChange({ operator: '', value: '' })
+    onChange({ ...value, value: '' })
     setOpen(false)
   }
 
@@ -719,14 +742,38 @@ function CriteriaChip({ value, onChange }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 bg-white border border-[#d1d5dc] rounded shadow-lg z-[9999] p-3 flex flex-col gap-2" style={{ minWidth: 220 }}>
-          <p className="text-xs text-gray-500">This filter will apply to the Balance field.</p>
+        <div className="absolute left-0 top-full mt-1 bg-white border border-[#d1d5dc] rounded shadow-lg z-[9999] p-3 flex flex-col gap-2" style={{ minWidth: 240 }}>
+          {/* Column selector */}
+          <div className="relative">
+            <button
+              className="w-full flex items-center justify-between px-3 py-1.5 border rounded text-sm bg-white hover:bg-gray-50 cursor-pointer"
+              style={{ borderColor: '#d1d5dc', color: colDef ? '#364153' : '#99a1af' }}
+              onClick={() => { setColumnOpen(v => !v); setOperatorOpen(false) }}
+            >
+              <span>{colDef?.label || 'Select column'}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M6 9l6 6 6-6" stroke="#99a1af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {columnOpen && (
+              <div className="absolute left-0 top-full mt-0.5 w-full bg-white border border-[#d1d5dc] rounded shadow-lg z-[10000] py-1">
+                {CRITERIA_COLUMNS.map((col, i) =>
+                  col.divider
+                    ? <hr key={i} className="my-1 border-[#e5e7eb]" />
+                    : <button key={col.key} className="w-full text-left px-3 py-1.5 text-sm text-[#364153] hover:bg-gray-50 cursor-pointer"
+                        onClick={() => { onChange({ ...value, column: col.key }); setColumnOpen(false) }}>
+                        {col.label}
+                      </button>
+                )}
+              </div>
+            )}
+          </div>
           {/* Operator */}
           <div className="relative">
             <button
               className="w-full flex items-center justify-between px-3 py-1.5 border rounded text-sm bg-white hover:bg-gray-50 cursor-pointer"
               style={{ borderColor: '#d1d5dc', color: operator ? '#364153' : '#99a1af' }}
-              onClick={() => setOperatorOpen(v => !v)}
+              onClick={() => { setOperatorOpen(v => !v); setColumnOpen(false) }}
             >
               <span>{operator || 'Select operator'}</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -734,7 +781,7 @@ function CriteriaChip({ value, onChange }) {
               </svg>
             </button>
             {operatorOpen && (
-              <div className="absolute left-0 top-full mt-0.5 w-full bg-white border border-[#d1d5dc] rounded shadow-lg z-[10000] py-1">
+              <div className="absolute left-0 top-full mt-0.5 w-full bg-white border border-[#d1d5dc] rounded shadow-lg z-[10001] py-1">
                 {OPERATORS.map(o => (
                   <button key={o.label} className="w-full text-left px-3 py-1.5 text-sm text-[#364153] hover:bg-gray-50 cursor-pointer"
                     onClick={() => { onChange({ ...value, operator: o.label }); setOperatorOpen(false) }}>
@@ -836,16 +883,25 @@ function FilterChip({ label, values, variant = 'default', value, onChange }) {
 }
 
 
+const MONEY_FIELDS = new Set(['ageBal0', 'ageBal1', 'ageBal2', 'ageBal3', 'ageBal4Plus', 'unapplied', 'balance'])
+function fmtMoney(v) {
+  if (v == null) return ''
+  return Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 const ALL_COLUMNS = [
   { field: 'customerName', title: 'Customer Name', width: 200 },
   { field: 'customerId',   title: 'Customer ID',   width: 140 },
   { field: 'status',       title: 'Status',        width: 100 },
   { field: 'finance',      title: 'Finance',       width: 100 },
-  { field: 'type',         title: 'Type',          width: 140 },
-  { field: 'date',         title: 'Date',          width: 140 },
-  { field: 'contact',      title: 'Contact',       width: 260 },
   { field: 'class',        title: 'Class',         width: 140 },
   { field: 'billingCycle', title: 'Billing cycle', width: 140 },
+  { field: 'ageBal0',      title: 'AgeBal0',       width: 110 },
+  { field: 'ageBal1',      title: 'AgeBal1',       width: 110 },
+  { field: 'ageBal2',      title: 'AgeBal2',       width: 110 },
+  { field: 'ageBal3',      title: 'AgeBal3',       width: 110 },
+  { field: 'ageBal4Plus',  title: 'AgeBal4+',      width: 130 },
+  { field: 'unapplied',    title: 'Unapplied',     width: 120 },
   { field: 'balance',      title: 'Balance',       width: 120 },
 ]
 
@@ -961,10 +1017,10 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
                     <th
                       key={col.field}
                       style={{ minWidth: col.width, width: col.width }}
-                      className="text-left px-3 py-2.5 font-semibold text-xs text-[#364153] whitespace-nowrap cursor-pointer select-none hover:bg-gray-50"
+                      className={`px-3 py-2.5 font-semibold text-xs text-[#364153] whitespace-nowrap cursor-pointer select-none hover:bg-gray-50${MONEY_FIELDS.has(col.field) ? ' text-right' : ' text-left'}`}
                       onClick={() => toggleSort(col.field)}
                     >
-                      <span className="inline-flex items-center gap-1">
+                      <span className={`inline-flex items-center gap-1${MONEY_FIELDS.has(col.field) ? ' justify-end' : ''}`}>
                         {col.title}
                         {s ? (
                           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0">
@@ -988,10 +1044,12 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
               {sorted.map((row, i) => (
                 <tr key={i} className="border-b border-[#f3f4f6] hover:bg-gray-50">
                   {cols.map(col => (
-                    <td key={col.field} style={{ minWidth: col.width, width: col.width }} className="px-3 py-2.5 whitespace-nowrap">
-                      {col.field === 'balance'
-                        ? (row.balance != null ? `$${Number(row.balance).toLocaleString()}` : '')
-                        : row[col.field]}
+                    <td
+                      key={col.field}
+                      style={{ minWidth: col.width, width: col.width }}
+                      className={`px-3 py-2.5 whitespace-nowrap${MONEY_FIELDS.has(col.field) ? ' text-right tabular-nums' : ''}`}
+                    >
+                      {MONEY_FIELDS.has(col.field) ? fmtMoney(row[col.field]) : row[col.field]}
                     </td>
                   ))}
                 </tr>
