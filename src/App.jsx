@@ -22,7 +22,7 @@ export default function App() {
   const [page, setPage] = useState('main') // 'main' | 'docs'
   const [loadedData, setLoadedData] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [chipSelections, setChipSelections] = useState({ status: new Set(), billingCycle: new Set(), finance: new Set(), class: new Set() })
+  const [chipSelections, setChipSelections] = useState({ status: new Set(), billingCycle: new Set(), finance: new Set(), class: new Set(), delivery: new Set() })
   const [criteriaFilter, setCriteriaFilter] = useState({ column: 'accountBalance', operator: 'Greater than', value: '' })
   const [activeOptionalFields, setActiveOptionalFields] = useState([])
   const [loadReady, setLoadReady] = useState(false)
@@ -97,10 +97,13 @@ export default function App() {
       billingCycle: new Set(template.selections?.billingCycle ?? []),
       finance:      new Set(template.selections?.finance      ?? []),
       class:        new Set(template.selections?.class        ?? []),
+      delivery:     new Set(template.selections?.delivery     ?? []),
     }
+    const criteria = template.selections?._criteria ?? { column: 'accountBalance', operator: 'Greater than', value: '' }
     setChipSelections(sels)
+    setCriteriaFilter(criteria)
     setLoadReady(true)
-    applyFilter(sels)
+    applyFilter(sels, criteria)
   }
 
   function addOptionalField(field) {
@@ -251,6 +254,7 @@ export default function App() {
                 <FilterChip label="Status"        field="status"       values={[...new Set(ROWS.map(r => r.status))]}       value={chipSelections.status}       onChange={s => updateChip('status',       s)} />
                 <FilterChip label="Billing cycle" field="billingCycle" values={[...new Set(ROWS.map(r => r.billingCycle))]} value={chipSelections.billingCycle} onChange={s => updateChip('billingCycle', s)} />
                 <FilterChip label="Finance"       field="finance"      values={[...new Set(ROWS.map(r => r.finance))]}      value={chipSelections.finance}      onChange={s => updateChip('finance',      s)} />
+                <CriteriaChip value={criteriaFilter} onChange={updateCriteria} />
                 {activeOptionalFields.map(field => {
                   const cfg = OPTIONAL_FIELDS.find(f => f.field === field)
                   return (
@@ -260,7 +264,6 @@ export default function App() {
                       onChange={s => updateChip(field, s)} />
                   )
                 })}
-                <CriteriaChip value={criteriaFilter} onChange={updateCriteria} />
                 <AddChip
                   options={OPTIONAL_FIELDS.filter(f => !activeOptionalFields.includes(f.field))}
                   onAdd={addOptionalField}
@@ -268,7 +271,7 @@ export default function App() {
               </div>
               <div className="w-px self-stretch bg-gray-200 mx-2" />
               <div className="flex items-center gap-2">
-                <TemplateControl currentSelections={chipSelections} activeOptionalFields={activeOptionalFields} onSelectTemplate={handleSelectTemplate} filtersActive={anyChipActive} onToast={showToast} />
+                <TemplateControl currentSelections={chipSelections} criteriaFilter={criteriaFilter} activeOptionalFields={activeOptionalFields} onSelectTemplate={handleSelectTemplate} filtersActive={anyChipActive} onToast={showToast} />
                 <LoadButton onClick={() => handleLoad()} active={loadReady} />
               </div>
             </div>
@@ -314,30 +317,31 @@ function SubNavItem({ label }) {
 }
 
 const ROWS = [
-  { customerName: 'Harvest Moon Bistro',       customerId: '9100650', user: 'Juan Gomez',   class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 60746.53,   ageBal3: 0,       ageBal4Plus: 19.00,    unapplied: 0,        balance: 60765.53   },
-  { customerName: 'Blue Ridge Plumbing Co.',   customerId: '9100624', user: 'Juan Gomez',   class: 'Alpha',   billingCycle: '28 day', status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 252.88,  ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: -100.00,  balance: 152.88     },
-  { customerName: 'Sparrow & Sons Electric',   customerId: '9100601', user: 'Juan Gomez',   class: 'Default', billingCycle: '28 day', status: 'Inactive', finance: 'Yes', ageBal0: 0,       ageBal1: 2.20,    ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 2.20       },
-  { customerName: 'Westlake Academy',          customerId: '300212',  user: 'Maria Santos', class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 1363.20, ageBal4Plus: 21811.20, unapplied: 0,        balance: 23174.40   },
-  { customerName: 'Copper Kettle Diner',       customerId: '482901',  user: 'Maria Santos', class: 'Alpha',   billingCycle: '14 day', status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 92396.24, unapplied: -6821.09, balance: 85575.15   },
-  { customerName: 'Mesa Verde Roofing',        customerId: '482955',  user: 'Maria Santos', class: 'Beta',    billingCycle: '28 day', status: 'Pending',  finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 45.36,    unapplied: 0,        balance: 45.36      },
-  { customerName: 'Pinecrest Dental Group',    customerId: '482988',  user: 'Maria Santos', class: 'Beta',    billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 1176.12, ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 1176.12    },
-  { customerName: 'Summit Ridge Landscaping',  customerId: '771430',  user: 'Derek Hale',   class: 'Beta',    billingCycle: '28 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 3435.26,  unapplied: 0,        balance: 3435.26    },
-  { customerName: 'Clearwater HVAC Services',  customerId: '771488',  user: 'Derek Hale',   class: 'Default', billingCycle: '14 day', status: 'Inactive', finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 4130.10, ageBal4Plus: 55842.07, unapplied: 0,        balance: 59972.17   },
-  { customerName: 'Pinnacle Auto Group',       customerId: '334872',  user: 'Derek Hale',   class: 'Default', billingCycle: '28 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 2801.76,  unapplied: -105.00,  balance: 2696.76    },
-  { customerName: 'Ironwood Charter School',   customerId: '609115',  user: 'Maria Santos', class: 'Alpha',   billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 1842.50, ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 1842.50    },
-  { customerName: 'Pacific Crest Logistics',   customerId: '609177',  user: 'Maria Santos', class: 'Default', billingCycle: '28 day', status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 4167.95,    ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 4167.95 },
-  { customerName: 'Golden Gate Bakery',        customerId: '218763',  user: 'Juan Gomez',   class: 'Beta',    billingCycle: '14 day', status: 'Pending',  finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 287.01,   unapplied: 0,        balance: 287.01     },
-  { customerName: 'Redwood Valley Winery',     customerId: '218800',  user: 'Juan Gomez',   class: 'Alpha',   billingCycle: '28 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 245.38,   unapplied: 0,        balance: 245.38     },
-  { customerName: 'Lakeside Family Clinic',    customerId: '557294',  user: 'Derek Hale',   class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 1490.16,  unapplied: 0,        balance: 1490.16    },
-  { customerName: 'Northgate Hardware',        customerId: '557350',  user: 'Derek Hale',   class: 'Beta',    billingCycle: '28 day', status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 3523.10,  unapplied: 0,        balance: 3523.10    },
-  { customerName: 'Canyon View Tire & Auto',   customerId: '893041',  user: 'Maria Santos', class: 'Alpha',   billingCycle: '14 day', status: 'Inactive', finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 39141.97, unapplied: -189.90,  balance: 38952.07   },
-  { customerName: 'Maplewood Prep School',     customerId: '893099',  user: 'Maria Santos', class: 'Default', billingCycle: '28 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 200.00,   unapplied: 0,        balance: 200.00     },
-  { customerName: 'Frontier Pest Solutions',   customerId: '124580',  user: 'Derek Hale',   class: 'Default', billingCycle: '14 day', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 2.20,     unapplied: 0,        balance: 2.20       },
-  { customerName: 'Starling Coffee Roasters',  customerId: '124642',  user: 'Derek Hale',   class: 'Beta',    billingCycle: '28 day', status: 'Pending',  finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 59972.17, unapplied: 0,        balance: 59972.17   },
+  { customerName: 'Harvest Moon Bistro',       customerId: '9100650', user: 'Juan Gomez',   class: 'Default', billingCycle: '14 day', delivery: 'Email invoice',           status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 18432.75,   ageBal3: 0,       ageBal4Plus: 19.00,    unapplied: 0,        balance: 18451.75   },
+  { customerName: 'Blue Ridge Plumbing Co.',   customerId: '9100624', user: 'Juan Gomez',   class: 'Alpha',   billingCycle: '28 day', delivery: 'Print invoice',           status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 252.88,  ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: -100.00,  balance: 152.88     },
+  { customerName: 'Sparrow & Sons Electric',   customerId: '9100601', user: 'Juan Gomez',   class: 'Default', billingCycle: '28 day', delivery: 'Print and email invoice', status: 'Inactive', finance: 'Yes', ageBal0: 0,       ageBal1: 2.20,    ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 2.20       },
+  { customerName: 'Westlake Academy',          customerId: '300212',  user: 'Maria Santos', class: 'Default', billingCycle: '14 day', delivery: 'Email invoice',           status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 1363.20, ageBal4Plus: 21811.20, unapplied: 0,        balance: 23174.40   },
+  { customerName: 'Copper Kettle Diner',       customerId: '482901',  user: 'Maria Santos', class: 'Alpha',   billingCycle: '14 day', delivery: 'No delivery',             status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 14250.00, unapplied: -6821.09, balance: 7428.91    },
+  { customerName: 'Mesa Verde Roofing',        customerId: '482955',  user: 'Maria Santos', class: 'Beta',    billingCycle: '28 day', delivery: 'Print invoice',           status: 'Pending',  finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 45.36,    unapplied: 0,        balance: 45.36      },
+  { customerName: 'Pinecrest Dental Group',    customerId: '482988',  user: 'Maria Santos', class: 'Beta',    billingCycle: '14 day', delivery: 'Email invoice',           status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 1176.12, ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 1176.12    },
+  { customerName: 'Summit Ridge Landscaping',  customerId: '771430',  user: 'Derek Hale',   class: 'Beta',    billingCycle: '28 day', delivery: 'Print and email invoice', status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 3435.26,  unapplied: 0,        balance: 3435.26    },
+  { customerName: 'Clearwater HVAC Services',  customerId: '771488',  user: 'Derek Hale',   class: 'Default', billingCycle: '14 day', delivery: 'No delivery',             status: 'Inactive', finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 4130.10, ageBal4Plus: 12680.45, unapplied: 0,        balance: 16810.55   },
+  { customerName: 'Pinnacle Auto Group',       customerId: '334872',  user: 'Derek Hale',   class: 'Default', billingCycle: '28 day', delivery: 'Print invoice',           status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 2801.76,  unapplied: -105.00,  balance: 2696.76    },
+  { customerName: 'Ironwood Charter School',   customerId: '609115',  user: 'Maria Santos', class: 'Alpha',   billingCycle: '14 day', delivery: 'Email invoice',           status: 'Active',   finance: 'Yes', ageBal0: 1842.50, ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 1842.50    },
+  { customerName: 'Pacific Crest Logistics',   customerId: '609177',  user: 'Maria Santos', class: 'Default', billingCycle: '28 day', delivery: 'Print and email invoice', status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 4167.95,    ageBal3: 0,       ageBal4Plus: 0,        unapplied: 0,        balance: 4167.95    },
+  { customerName: 'Golden Gate Bakery',        customerId: '218763',  user: 'Juan Gomez',   class: 'Beta',    billingCycle: '14 day', delivery: 'No delivery',             status: 'Pending',  finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 287.01,   unapplied: 0,        balance: 287.01     },
+  { customerName: 'Redwood Valley Winery',     customerId: '218800',  user: 'Juan Gomez',   class: 'Alpha',   billingCycle: '28 day', delivery: 'Email invoice',           status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 245.38,   unapplied: 0,        balance: 245.38     },
+  { customerName: 'Lakeside Family Clinic',    customerId: '557294',  user: 'Derek Hale',   class: 'Default', billingCycle: '14 day', delivery: 'Print invoice',           status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 1490.16,  unapplied: 0,        balance: 1490.16    },
+  { customerName: 'Northgate Hardware',        customerId: '557350',  user: 'Derek Hale',   class: 'Beta',    billingCycle: '28 day', delivery: 'Print and email invoice', status: 'Active',   finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 3523.10,  unapplied: 0,        balance: 3523.10    },
+  { customerName: 'Canyon View Tire & Auto',   customerId: '893041',  user: 'Maria Santos', class: 'Alpha',   billingCycle: '14 day', delivery: 'No delivery',             status: 'Inactive', finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 9874.32,  unapplied: -189.90,  balance: 9684.42    },
+  { customerName: 'Maplewood Prep School',     customerId: '893099',  user: 'Maria Santos', class: 'Default', billingCycle: '28 day', delivery: 'Email invoice',           status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 200.00,   unapplied: 0,        balance: 200.00     },
+  { customerName: 'Frontier Pest Solutions',   customerId: '124580',  user: 'Derek Hale',   class: 'Default', billingCycle: '14 day', delivery: 'Print invoice',           status: 'Active',   finance: 'Yes', ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 2.20,     unapplied: 0,        balance: 2.20       },
+  { customerName: 'Starling Coffee Roasters',  customerId: '124642',  user: 'Derek Hale',   class: 'Beta',    billingCycle: '28 day', delivery: 'Print and email invoice', status: 'Pending',  finance: 'No',  ageBal0: 0,       ageBal1: 0,       ageBal2: 0,          ageBal3: 0,       ageBal4Plus: 22150.80, unapplied: 0,        balance: 22150.80   },
 ]
 
 const OPTIONAL_FIELDS = [
-  { field: 'class', label: 'Class' },
+  { field: 'class',    label: 'Class' },
+  { field: 'delivery', label: 'Delivery' },
 ]
 
 const COLUMNS = [
@@ -350,7 +354,7 @@ const COLUMNS = [
 
 const TEMPLATES_KEY = 'fe_templates'
 
-function TemplateControl({ currentSelections = {}, activeOptionalFields = [], onSelectTemplate, filtersActive = false, onToast }) {
+function TemplateControl({ currentSelections = {}, criteriaFilter = {}, activeOptionalFields = [], onSelectTemplate, filtersActive = false, onToast }) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState('dropdown') // 'dropdown' | 'create' | 'edit'
   const [templates, setTemplates] = useState(() => {
@@ -402,7 +406,9 @@ function TemplateControl({ currentSelections = {}, activeOptionalFields = [], on
       billingCycle:    [...(currentSelections.billingCycle ?? [])],
       finance:         [...(currentSelections.finance      ?? [])],
       class:           [...(currentSelections.class        ?? [])],
+      delivery:        [...(currentSelections.delivery     ?? [])],
       _optionalFields: activeOptionalFields,
+      _criteria:       criteriaFilter,
     }
     persist([...templates, { name, visibleToAll, selections }])
     setSelectedName(name)
@@ -418,7 +424,9 @@ function TemplateControl({ currentSelections = {}, activeOptionalFields = [], on
       billingCycle:    [...(currentSelections.billingCycle ?? [])],
       finance:         [...(currentSelections.finance      ?? [])],
       class:           [...(currentSelections.class        ?? [])],
+      delivery:        [...(currentSelections.delivery     ?? [])],
       _optionalFields: activeOptionalFields,
+      _criteria:       criteriaFilter,
     }
     const next = templates.map(t =>
       t.name === editingName ? { ...t, name, visibleToAll, selections } : t
@@ -439,7 +447,9 @@ function TemplateControl({ currentSelections = {}, activeOptionalFields = [], on
       billingCycle:    [...(currentSelections.billingCycle ?? [])],
       finance:         [...(currentSelections.finance      ?? [])],
       class:           [...(currentSelections.class        ?? [])],
+      delivery:        [...(currentSelections.delivery     ?? [])],
       _optionalFields: activeOptionalFields,
+      _criteria:       criteriaFilter,
     }
     persist([...templates, { ...base, name, visibleToAll, selections }])
     setSelectedName(name)
@@ -866,12 +876,12 @@ function FilterChip({ label, values, variant = 'default', value, onChange }) {
       {open && (
         <div className="absolute left-0 top-full mt-1 bg-white border border-[#d1d5dc] rounded shadow-lg z-[9999] py-1 min-w-[160px]">
           {values.map(val => (
-            <label key={val} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm text-[#364153]">
+            <label key={val} className="flex items-start gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm text-[#364153]">
               <input
                 type="checkbox"
                 checked={selected.has(val)}
                 onChange={() => toggleValue(val)}
-                className="accent-[#0069a8]"
+                className="accent-[#0069a8] mt-0.5 shrink-0"
               />
               {val}
             </label>
@@ -896,6 +906,7 @@ const ALL_COLUMNS = [
   { field: 'finance',      title: 'Finance',       width: 100 },
   { field: 'class',        title: 'Class',         width: 140 },
   { field: 'billingCycle', title: 'Billing cycle', width: 140 },
+  { field: 'delivery',    title: 'Delivery',       width: 180 },
   { field: 'ageBal0',      title: 'AgeBal0',       width: 110 },
   { field: 'ageBal1',      title: 'AgeBal1',       width: 110 },
   { field: 'ageBal2',      title: 'AgeBal2',       width: 110 },
@@ -925,7 +936,11 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
   const [search, setSearch] = useState('')
   const [visibleCols, setVisibleCols] = useState(() => new Set(ALL_COLUMNS.map(c => c.field)))
   const [showChooser, setShowChooser] = useState(false)
+  const [columnFilters, setColumnFilters] = useState({}) // { [field]: Set<excluded display values> } — empty/absent = all shown
+  const [activeFilter, setActiveFilter] = useState(null)
   const chooserRef = useRef(null)
+  const filterRef = useRef(null)
+  const hasColFilters = Object.values(columnFilters).some(s => s && s.size > 0)
 
   // Close chooser on outside click
   useEffect(() => {
@@ -937,6 +952,16 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [showChooser])
 
+  // Close column filter popover on outside click
+  useEffect(() => {
+    if (!activeFilter) return
+    function handler(e) {
+      if (filterRef.current && !filterRef.current.contains(e.target)) setActiveFilter(null)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [activeFilter])
+
   function toggleSort(field) {
     setSort(prev => {
       const existing = prev.find(s => s.field === field)
@@ -946,18 +971,64 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
     })
   }
 
-  // Global search: keep rows where any field contains the search string
+  function toggleFilter(field) {
+    setActiveFilter(prev => prev === field ? null : field)
+  }
+
+  // Toggle a single value's exclusion
+  function toggleColValue(field, displayVal) {
+    setColumnFilters(prev => {
+      const excluded = new Set(prev[field] ?? [])
+      excluded.has(displayVal) ? excluded.delete(displayVal) : excluded.add(displayVal)
+      if (excluded.size === 0) { const n = { ...prev }; delete n[field]; return n }
+      return { ...prev, [field]: excluded }
+    })
+  }
+
+  // "All" checkbox: unchecking excludes everything, checking clears all exclusions
+  function toggleAllColValues(field, allVals) {
+    setColumnFilters(prev => {
+      const excluded = prev[field]
+      const allExcluded = excluded && excluded.size === allVals.length
+      if (allExcluded) {
+        // Re-check all → clear exclusions
+        const n = { ...prev }; delete n[field]; return n
+      } else {
+        // Uncheck all → exclude everything
+        return { ...prev, [field]: new Set(allVals) }
+      }
+    })
+  }
+
+  function clearColFilter(field) {
+    setColumnFilters(prev => { const n = { ...prev }; delete n[field]; return n })
+    setActiveFilter(null)
+  }
+
+  // Global search
   const baseRows = loadedData ?? []
   const searched = search
     ? baseRows.filter(row => Object.values(row).some(v => String(v).toLowerCase().includes(search.toLowerCase())))
     : baseRows
 
-  const sorted = sortRows(searched, sort)
+  // Per-column filters: exclude rows whose display value is in the excluded set
+  const colFiltered = Object.entries(columnFilters).reduce((rows, [field, excluded]) => {
+    if (!excluded || excluded.size === 0) return rows
+    return rows.filter(row => {
+      const display = MONEY_FIELDS.has(field) ? fmtMoney(row[field]) : String(row[field] ?? '')
+      return !excluded.has(display)
+    })
+  }, searched)
+
+  const sorted = sortRows(colFiltered, sort)
   const cols = ALL_COLUMNS.filter(c => visibleCols.has(c.field))
 
   return (
     <div className="flex flex-col gap-[11px] items-end w-full">
-      <div className="w-full relative border border-[#d1d5dc] rounded" style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
+      <div
+        className="w-full relative border border-[#d1d5dc] rounded flex flex-col"
+        style={{ fontFamily: "'Nunito Sans', sans-serif", minHeight: loadedData !== null ? 'calc(100vh - 164px)' : undefined }}
+      >
 
         {/* Grouping zone bar — visual only, dead/inactive */}
         <div className="bg-gray-100 border-b border-[#d1d5dc] px-3.5 py-3.5" style={{ paddingRight: 320 }}>
@@ -1007,34 +1078,97 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto flex-1">
           <table className="w-full border-collapse text-sm text-[#364153]">
             <thead>
               <tr className="border-b border-[#d1d5dc] bg-white">
                 {cols.map(col => {
                   const s = sort.find(s => s.field === col.field)
+                  const isMoney = MONEY_FIELDS.has(col.field)
+                  const filterVal = columnFilters[col.field] ?? ''
+                  const filterActive = !!filterVal
+                  const filterOpen = activeFilter === col.field
                   return (
                     <th
                       key={col.field}
-                      style={{ minWidth: col.width, width: col.width }}
-                      className={`px-3 py-2.5 font-semibold text-xs text-[#364153] whitespace-nowrap cursor-pointer select-none hover:bg-gray-50${MONEY_FIELDS.has(col.field) ? ' text-right' : ' text-left'}`}
-                      onClick={() => toggleSort(col.field)}
+                      style={{ minWidth: col.width, width: col.width, position: 'relative' }}
+                      className={`px-3 py-2.5 font-semibold text-xs text-[#364153] whitespace-nowrap select-none${isMoney ? ' text-right' : ' text-left'}`}
                     >
-                      <span className={`inline-flex items-center gap-1${MONEY_FIELDS.has(col.field) ? ' justify-end' : ''}`}>
-                        {col.title}
-                        {s ? (
-                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0">
-                            {s.dir === 'asc'
-                              ? <path d="M6 9V3M3 6l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                              : <path d="M6 3v6M3 6l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />}
+                      <span className={`inline-flex items-center gap-1${isMoney ? ' justify-end' : ''}`}>
+                        {/* Sort — clicking title area only */}
+                        <span className="cursor-pointer hover:text-[#1d2f5d] inline-flex items-center gap-1" onClick={() => toggleSort(col.field)}>
+                          {col.title}
+                          {s ? (
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0">
+                              {s.dir === 'asc'
+                                ? <path d="M6 9V3M3 6l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                : <path d="M6 3v6M3 6l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />}
+                            </svg>
+                          ) : (
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[#99a1af]">
+                              <path d="M6 7.5V1.5M3 4.5l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+                              <path d="M6 4.5v6M3 7.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+                            </svg>
+                          )}
+                        </span>
+                        {/* Filter funnel */}
+                        <button
+                          onClick={e => { e.stopPropagation(); toggleFilter(col.field) }}
+                          className="shrink-0 flex items-center justify-center w-5 h-5 rounded cursor-pointer transition-colors"
+                          style={{ backgroundColor: filterOpen ? '#e5e7eb' : 'transparent' }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                            <path
+                              d="M8.33336 16.6667C8.33329 16.8215 8.37637 16.9733 8.45777 17.1051C8.53917 17.2368 8.65566 17.3433 8.79419 17.4125L10.4609 18.2458C10.5879 18.3093 10.7291 18.3393 10.8711 18.3329C11.013 18.3264 11.1509 18.2838 11.2717 18.2091C11.3925 18.1344 11.4922 18.03 11.5614 17.9059C11.6305 17.7818 11.6668 17.6421 11.6667 17.5V11.6667C11.6669 11.2537 11.8204 10.8554 12.0975 10.5492L18.1167 3.89167C18.2246 3.77213 18.2955 3.6239 18.3209 3.4649C18.3464 3.3059 18.3252 3.14294 18.2599 2.99573C18.1947 2.84851 18.0882 2.72335 17.9534 2.63538C17.8185 2.5474 17.661 2.50038 17.5 2.5H2.50003C2.33886 2.50006 2.18118 2.54685 2.04607 2.6347C1.91096 2.72255 1.80422 2.84769 1.73878 2.99497C1.67334 3.14225 1.65201 3.30534 1.67738 3.46449C1.70274 3.62364 1.77371 3.77203 1.88169 3.89167L7.90252 10.5492C8.17964 10.8554 8.33317 11.2537 8.33336 11.6667V16.6667Z"
+                              fill={filterActive ? '#0ea5e9' : 'none'}
+                              stroke={filterActive ? '#0ea5e9' : '#6A7282'}
+                              strokeWidth="1.25"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
                           </svg>
-                        ) : (
-                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[#99a1af]">
-                            <path d="M6 9V3M3 6l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
-                            <path d="M6 3v6M3 6l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
-                          </svg>
-                        )}
+                        </button>
                       </span>
+
+                      {/* Filter popover */}
+                      {filterOpen && (() => {
+                        const uniqueVals = [...new Set(
+                          baseRows.map(row => MONEY_FIELDS.has(col.field) ? fmtMoney(row[col.field]) : String(row[col.field] ?? ''))
+                        )].sort()
+                        const excluded = columnFilters[col.field] ?? new Set()
+                        const allChecked = excluded.size === 0
+                        return (
+                          <div
+                            ref={filterRef}
+                            className="absolute top-full mt-0.5 bg-white border border-[#d1d5dc] rounded shadow-lg z-[200] py-1 font-normal"
+                            style={{ [isMoney ? 'right' : 'left']: 0, minWidth: 180, maxHeight: 260, overflowY: 'auto' }}
+                            onClick={e => e.stopPropagation()}
+                          >
+                            {/* All checkbox */}
+                            <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs text-[#364153]">
+                              <input
+                                type="checkbox"
+                                checked={allChecked}
+                                onChange={() => toggleAllColValues(col.field, uniqueVals)}
+                                className="accent-[#0ea5e9]"
+                              />
+                              All
+                            </label>
+                            <div className="my-1 border-t border-[#e5e7eb]" />
+                            {uniqueVals.map(val => (
+                              <label key={val} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs text-[#364153]">
+                                <input
+                                  type="checkbox"
+                                  checked={!excluded.has(val)}
+                                  onChange={() => toggleColValue(col.field, val)}
+                                  className="accent-[#0ea5e9]"
+                                />
+                                {val}
+                              </label>
+                            ))}
+                          </div>
+                        )
+                      })()}
                     </th>
                   )
                 })}
@@ -1061,7 +1195,17 @@ function ActivityHistoryTable({ loadedData, isLoading }) {
           <div className="py-8 text-center text-sm text-[#62748e]">
             {loadedData === null
               ? 'Choose at least one filter then click Load.'
-              : 'No results match your search.'}
+              : hasColFilters || search
+                ? 'No results match the current filters.'
+                : 'No results match your search.'}
+          </div>
+        )}
+
+        {loadedData !== null && !isLoading && (
+          <div className="px-4 py-2.5 border-t border-[#e5e7eb] text-xs text-[#62748e]">
+            {hasColFilters || search
+              ? `Showing ${sorted.length} of ${loadedData.length} results`
+              : `Showing ${sorted.length} results`}
           </div>
         )}
 
